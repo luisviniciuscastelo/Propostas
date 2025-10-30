@@ -334,10 +334,16 @@
                         <input type="text" id="service-name" class="modal-input mt-1" required>
                     </div>
                     <div>
-                        <label for="service-category" class="block text-sm font-medium text-gray-700">Categoria</label>
-                        <select id="service-category" class="modal-select mt-1">
+                        <label for="service-billing-model" class="block text-sm font-medium text-gray-700">Modelo de Cobrança</label>
+                        <select id="service-billing-model" class="modal-select mt-1">
                             <option value="porVida">Serviços por Vida</option>
                             <option value="anual">Serviços Anuais</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="service-category-select" class="block text-sm font-medium text-gray-700">Tipo de Serviço</label>
+                        <select id="service-category-select" class="modal-select mt-1">
+                            <!-- Options will be populated by JS -->
                         </select>
                     </div>
                     <div>
@@ -377,10 +383,16 @@
                         <input type="text" id="edit-service-name" class="modal-input mt-1" required>
                     </div>
                     <div>
-                        <label for="edit-service-category" class="block text-sm font-medium text-gray-700">Categoria</label>
-                        <select id="edit-service-category" class="modal-select mt-1">
+                        <label for="edit-service-billing-model" class="block text-sm font-medium text-gray-700">Modelo de Cobrança</label>
+                        <select id="edit-service-billing-model" class="modal-select mt-1">
                             <option value="porVida">Serviços por Vida</option>
                             <option value="anual">Serviços Anuais</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit-service-category-select" class="block text-sm font-medium text-gray-700">Tipo de Serviço</label>
+                        <select id="edit-service-category-select" class="modal-select mt-1">
+                            <!-- Options will be populated by JS -->
                         </select>
                     </div>
                     <div>
@@ -456,6 +468,23 @@
                     <div id="proposal-history-container" class="space-y-2 max-h-40 overflow-y-auto text-sm">
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div id="category-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 id="category-modal-title" class="text-xl font-bold mb-6 text-center text-cyan-800">Adicionar Nova Categoria</h3>
+                <form id="category-form" class="space-y-4">
+                    <input type="hidden" id="categoryId-modal">
+                    <div>
+                        <label for="category-name" class="block text-sm font-medium text-gray-700">Nome da Categoria</label>
+                        <input type="text" id="category-name" class="modal-input mt-1" required>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="modal-category-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                        <button type="submit" class="bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Salvar</button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -639,6 +668,17 @@
                             <button id="open-adjustment-modal-btn" class="bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-orange-600 transition-all mt-6">Selecionar Serviços e Reajustar</button>
                         </div>
                     </div>
+
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                            <h2 class="text-xl font-semibold text-cyan-800">Gerenciar Categorias de Serviço</h2>
+                            <button id="add-category-btn" class="bg-green-100 text-green-800 font-semibold py-2 px-4 rounded-lg hover:bg-green-200 transition-all">+ Adicionar Categoria</button>
+                        </div>
+                        <div id="category-list-container" class="space-y-2">
+                            <!-- As categorias serão renderizadas aqui -->
+                        </div>
+                    </div>
+
                     <div id="price-table-container" class="space-y-8"></div>
                     <div class="mt-8">
                         <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Log de Alterações de Preços</h2>
@@ -717,6 +757,7 @@
         let clients = [];
         let priceLogEntries = [];
         let proposalLogEntries = [];
+        let serviceCategories = [];
         let unsubscribeProposals;
         let unsubscribeClients;
         let unsubscribeLogs;
@@ -767,125 +808,154 @@
         }
 
         const initialPriceData = {
+            serviceCategories: [
+                { id: 'programas', name: 'Programas' },
+                { id: 'laudos', name: 'Laudos' },
+                { id: 'treinamentos', name: 'Treinamentos' },
+                { id: 'servicos_administrativos', name: 'Serviços Administrativos' },
+                { id: 'avaliacoes_quantitativas', name: 'Avaliações Quantitativas' },
+                { id: 'medicina', name: 'Medicina' },
+                { id: 'engenharia', name: 'Engenharia' },
+            ],
             // SEU OBJETO DE DADOS INICIAIS (PRESERVADO)
             porVida: [{
                 id: 'custo_adm',
                 nome: 'Custo Administrativo',
                 descricao: 'Gestão administrativa e operacional dos serviços de saúde e segurança do trabalho contratados.',
-                precos: buildTiers(Array(9).fill(10.56))
+                precos: buildTiers(Array(9).fill(10.56)),
+                categoryId: 'servicos_administrativos'
             }, {
                 id: 'gestao_abs',
                 nome: 'Gestão de Absenteísmo',
                 descricao: 'Monitoramento e análise das ausências ao trabalho por motivos de saúde, com o objetivo de identificar causas e propor ações preventivas e corretivas.',
-                precos: buildTiers([15, 14, 13, 12, 11, 10, 10, 10, 10])
+                precos: buildTiers([15, 14, 13, 12, 11, 10, 10, 10, 10]),
+                categoryId: 'medicina'
             }, {
                 id: 'uso_soc',
                 nome: 'Uso do SOC',
                 descricao: 'Disponibilização de acesso ao SOC, sistema integrado para gestão de Saúde e Segurança do Trabalho.',
-                precos: buildTiers(Array(9).fill(0.90))
+                precos: buildTiers(Array(9).fill(0.90)),
+                categoryId: 'servicos_administrativos'
             }],
             anual: [{
                 id: 'pcmso',
                 nome: 'PCMSO',
                 tipo: 'fixo',
                 descricao: 'Elaboração e coordenação do Programa de Controle Médico de Saúde Ocupacional, incluindo a emissão do Relatório Analítico Anual, em conformidade com a NR-7.',
-                precos: buildTiers([250, 350, 450, 550, 650, 750, 900, 1000, 1200])
+                precos: buildTiers([250, 350, 450, 550, 650, 750, 900, 1000, 1200]),
+                categoryId: 'programas'
             }, {
                 id: 'pgr',
                 nome: 'PGR',
                 tipo: 'fixo',
                 descricao: 'Elaboração e acompanhamento do Programa de Gerenciamento de Riscos, conforme a NR-1.',
-                precos: buildTiers([135, 165, 215, 297.50, 350, 430, 485, 515, 537.50])
+                precos: buildTiers([135, 165, 215, 297.50, 350, 430, 485, 515, 537.50]),
+                categoryId: 'programas'
             }, {
                 id: 'ltcat',
                 nome: 'LTCAT',
                 tipo: 'fixo',
                 descricao: 'Elaboração do Laudo Técnico das Condições do Ambiente de Trabalho para fins de aposentadoria especial.',
-                precos: buildTiers([162.50, 215, 270, 322.50, 380, 430, 515, 565, 645])
+                precos: buildTiers([162.50, 215, 270, 322.50, 380, 430, 515, 565, 645]),
+                categoryId: 'laudos'
             }, {
                 id: 'gestao_esocial',
                 nome: 'Gestão de SST para o eSocial',
                 tipo: 'fixo',
                 preco: 0.01,
-                descricao: 'Emissão e envio das informações de SST dos layouts 2210 (Comunicação de Acidente de Trabalho), 2220 (Monitoramento da Saúde do Trabalhador - ASO) e 2240 (Condições Ambientais do Trabalho). Serviços complementares do eSocial solicitar orçamento! Como por exemplo layout 2230 – Afastamento Temporário - Atestados médicos.'
+                descricao: 'Emissão e envio das informações de SST dos layouts 2210 (Comunicação de Acidente de Trabalho), 2220 (Monitoramento da Saúde do Trabalhador - ASO) e 2240 (Condições Ambientais do Trabalho). Serviços complementares do eSocial solicitar orçamento! Como por exemplo layout 2230 – Afastamento Temporário - Atestados médicos.',
+                categoryId: 'servicos_administrativos'
             }, {
                 id: 'palestras_anuais',
                 nome: 'Palestras Anuais (Palestrão)',
                 tipo: 'fixo',
                 preco: 0.01,
-                descricao: 'Palestras ministradas anualmente conforme programação preventiva do PCMSO/PGR, em formato palestrão, em data fornecida pela MedMais.'
+                descricao: 'Palestras ministradas anualmente conforme programação preventiva do PCMSO/PGR, em formato palestrão, em data fornecida pela MedMais.',
+                categoryId: 'treinamentos'
             }, {
                 id: 'visita_tecnica',
                 nome: 'Visita Técnica no Local',
                 tipo: 'fixo',
                 preco: 0.01,
-                descricao: 'Avaliação qualitativa dos riscos laborais realizadas por técnico ou engenheiro de segurança do trabalho. Serviços complementares de Engenheira de Segurança devem solicitar orçamento, como por exemplo medições quantitativas como de ruído e calor.'
+                descricao: 'Avaliação qualitativa dos riscos laborais realizadas por técnico ou engenheiro de segurança do trabalho. Serviços complementares de Engenheira de Segurança devem solicitar orçamento, como por exemplo medições quantitativas como de ruído e calor.',
+                categoryId: 'engenharia'
             }, {
                 id: 'emissao_aso',
                 nome: 'Emissão de ASO',
                 tipo: 'fixo',
                 preco: 0.01,
-                descricao: 'Atestado de Saúde Ocupacional emitidos para funcionários CLT, sendo realizados na sede da MedMais ou na sede da contratante se assim for incluído na proposta.'
+                descricao: 'Atestado de Saúde Ocupacional emitidos para funcionários CLT, sendo realizados na sede da MedMais ou na sede da contratante se assim for incluído na proposta.',
+                categoryId: 'medicina'
             }, {
                 id: 'risco_psicossocial',
                 nome: 'Avaliação de Fatores de Risco Psicossociais',
                 tipo: 'fixo',
                 precos: buildTiers([500.5, 669.50, 864.50, 1101.75, 1300, 1534, 1800.50, 1969.50, 2258.75]),
-                descricao: 'Fase 1: Planejamento Estratégico e Alinhamento<br>• Reunião inicial com a gestão e o RH para definir o escopo, o cronograma e os grupos participantes.<br>• Apresentação da metodologia e validação do plano de comunicação interna.<br>Fase 2: Comunicação e Sensibilização dos Colaboradores<br>• Fornecimento de material e orientação para a comunicação interna sobre a importância, os objetivos e a confidencialidade do processo.<br>Fase 3: Aplicação de Ferramenta Validada<br>• Aplicação de questionário online, sigiloso e confidencial, baseado em metodologia cientificamente validada.<br>Fase 4: Análise de Dados e Relatório Técnico<br>• Análise estatística dos dados e elaboração de um relatório consolidado e 100% anônimo.<br>Fase 5: Apresentação de Resultados e Recomendações<br>• Reunião com a gestão para apresentar os resultados e desenvolver um Plano de Ação.<br>Fase 6: Integração ao PGR e PCMSO<br>• Inclusão formal dos riscos psicossociais no Inventário de Riscos do PGR e atualização do PCMSO.'
+                descricao: 'Fase 1: Planejamento Estratégico e Alinhamento<br>• Reunião inicial com a gestão e o RH para definir o escopo, o cronograma e os grupos participantes.<br>• Apresentação da metodologia e validação do plano de comunicação interna.<br>Fase 2: Comunicação e Sensibilização dos Colaboradores<br>• Fornecimento de material e orientação para a comunicação interna sobre a importância, os objetivos e a confidencialidade do processo.<br>Fase 3: Aplicação de Ferramenta Validada<br>• Aplicação de questionário online, sigiloso e confidencial, baseado em metodologia cientificamente validada.<br>Fase 4: Análise de Dados e Relatório Técnico<br>• Análise estatística dos dados e elaboração de um relatório consolidado e 100% anônimo.<br>Fase 5: Apresentação de Resultados e Recomendações<br>• Reunião com a gestão para apresentar os resultados e desenvolver um Plano de Ação.<br>Fase 6: Integração ao PGR e PCMSO<br>• Inclusão formal dos riscos psicossociais no Inventário de Riscos do PGR e atualização do PCMSO.',
+                categoryId: 'programas'
             }, {
                 id: 'insalubridade',
                 nome: 'Laudo de Insalubridade',
                 tipo: 'fixo',
                 descricao: 'Análise técnica das condições de trabalho para caracterização de atividades ou operações insalubres, conforme a NR-15.',
-                precos: buildTiers([165, 220, 275, 330, 385, 440, 515, 565, 645])
+                precos: buildTiers([165, 220, 275, 330, 385, 440, 515, 565, 645]),
+                categoryId: 'laudos'
             }, {
                 id: 'periculosidade',
                 nome: 'Laudo de Periculosidade',
                 tipo: 'fixo',
                 descricao: 'Análise técnica para caracterização de atividades e operações perigosas que envolvem riscos acentuados, conforme a NR-16.',
-                precos: buildTiers([165, 215, 270, 322.50, 377.50, 430, 515, 565, 645])
+                precos: buildTiers([165, 215, 270, 322.50, 377.50, 430, 515, 565, 645]),
+                categoryId: 'laudos'
             }, {
                 id: 'aep',
                 nome: 'Análise Ergonômica (AEP)',
                 tipo: 'fixo',
                 descricao: 'Realização da Análise Ergonômica Preliminar para identificar e avaliar os riscos ergonômicos, de acordo com a NR-17.',
-                precos: buildTiers([720, 840, 960, 1080, 1200, 1320, 1440, 1560, 1680])
+                precos: buildTiers([720, 840, 960, 1080, 1200, 1320, 1440, 1560, 1680]),
+                categoryId: 'laudos'
             }, {
                 id: 'mapa_risco',
                 nome: 'Mapa de Risco',
                 tipo: 'fixo',
                 descricao: 'Elaboração do Mapa de Riscos, representando graficamente os riscos existentes nos locais de trabalho.',
-                precos: buildTiers([60, 90, 150, 207.50, 267.50, 295, 355, 502.50, 592.50])
+                precos: buildTiers([60, 90, 150, 207.50, 267.50, 295, 355, 502.50, 592.50]),
+                categoryId: 'engenharia'
             }, {
                 id: 'pca',
                 nome: 'PCA',
                 tipo: 'fixo',
                 descricao: 'Desenvolvimento do Programa de Conservação Auditiva para prevenir ou estabilizar as perdas auditivas ocupacionais.',
-                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000])
+                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000]),
+                categoryId: 'programas'
             }, {
                 id: 'ppr',
                 nome: 'PPR',
                 tipo: 'fixo',
                 descricao: 'Implementação do Programa de Proteção Respiratória, estabelecendo procedimentos para a seleção e uso de EPIs.',
-                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000])
+                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000]),
+                categoryId: 'programas'
             }, {
                 id: 'perfuro',
                 nome: 'Plano de Perfuro-Cortante',
                 tipo: 'fixo',
                 descricao: 'Elaboração do Plano de Prevenção de Riscos de Acidentes com Materiais Perfurocortantes, conforme a NR-32.',
-                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000])
+                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000]),
+                categoryId: 'programas'
             }, {
                 id: 'art_pgr',
                 nome: 'ART para PGR',
                 tipo: 'fixo',
                 preco: 105,
-                descricao: 'Emissão da Anotação de Responsabilidade Técnica junto ao CREA para o PGR.'
+                descricao: 'Emissão da Anotação de Responsabilidade Técnica junto ao CREA para o PGR.',
+                categoryId: 'engenharia'
             }, {
                 id: 'art_ltcat',
                 nome: 'ART para LTCAT',
                 tipo: 'fixo',
                 preco: 105,
-                descricao: 'Emissão da Anotação de Responsabilidade Técnica junto ao CREA para o LTCAT.'
+                descricao: 'Emissão da Anotação de Responsabilidade Técnica junto ao CREA para o LTCAT.',
+                categoryId: 'engenharia'
             }, {
                 id: 'atend_in_company',
                 nome: 'Atendimento in Company',
@@ -894,7 +964,8 @@
                 preco: 400,
                 sugestao_fator: 1.5,
                 sugestao_divisor: 16,
-                descricao: 'Realização de atendimentos médicos ocupacionais nas instalações do cliente.'
+                descricao: 'Realização de atendimentos médicos ocupacionais nas instalações do cliente.',
+                categoryId: 'medicina'
             }, {
                 id: 'ordem_servico',
                 nome: 'Emissão de Ordens de Serviço',
@@ -902,54 +973,62 @@
                 obs: 'ordens',
                 preco: 50,
                 sugestao_fator: 1.5,
-                descricao: 'Elaboração e fornecimento de Ordens de Serviço de Segurança e Saúde no Trabalho, conforme a NR-1.'
+                descricao: 'Elaboração e fornecimento de Ordens de Serviço de Segurança e Saúde no Trabalho, conforme a NR-1.',
+                categoryId: 'servicos_administrativos'
             }, {
                 id: 'medicao_ruido',
                 nome: 'Medição de Ruído',
                 tipo: 'quantidade',
                 obs: 'pontos',
                 preco: 150,
-                descricao: 'Avaliação quantitativa dos níveis de pressão sonora (dosimetria de ruído).'
+                descricao: 'Avaliação quantitativa dos níveis de pressão sonora (dosimetria de ruído).',
+                categoryId: 'avaliacoes_quantitativas'
             }, {
                 id: 'medicao_calor',
                 nome: 'Medição de Calor',
                 tipo: 'quantidade',
                 obs: 'pontos',
                 preco: 150,
-                descricao: 'Avaliação quantitativa da exposição ao calor (IBUTG).'
+                descricao: 'Avaliação quantitativa da exposição ao calor (IBUTG).',
+                categoryId: 'avaliacoes_quantitativas'
             }, {
                 id: 'cipa',
                 nome: 'Treinamento CIPA',
                 tipo: 'fixo',
                 preco: 600,
-                descricao: 'Capacitação dos membros da Comissão Interna de Prevenção de Acidentes (CIPA), conforme a NR-5.'
+                descricao: 'Capacitação dos membros da Comissão Interna de Prevenção de Acidentes (CIPA), conforme a NR-5.',
+                categoryId: 'treinamentos'
             }, {
                 id: 'brigada',
                 nome: 'Treinamento Brigada',
                 tipo: 'fixo',
                 preco: 800,
-                descricao: 'Treinamento teórico e prático para os membros da Brigada de Incêndio.'
+                descricao: 'Treinamento teórico e prático para os membros da Brigada de Incêndio.',
+                categoryId: 'treinamentos'
             }, {
                 id: 'nr35',
                 nome: 'Treinamento NR 35',
                 tipo: 'quantidade',
                 obs: 'por turma',
                 preco: 850,
-                descricao: 'Capacitação para trabalho em altura, conforme a NR-35.'
+                descricao: 'Capacitação para trabalho em altura, conforme a NR-35.',
+                categoryId: 'treinamentos'
             }, {
                 id: 'nr33',
                 nome: 'Treinamento NR 33',
                 tipo: 'quantidade',
                 obs: 'por turma',
                 preco: 950,
-                descricao: 'Capacitação para trabalhadores e vigias que atuam em espaços confinados, conforme a NR-33.'
+                descricao: 'Capacitação para trabalhadores e vigias que atuam em espaços confinados, conforme a NR-33.',
+                categoryId: 'treinamentos'
             }, {
                 id: 'nr12',
                 nome: 'Treinamento NR 12',
                 tipo: 'quantidade',
                 obs: 'por aluno',
                 precos: buildTiers([100, 60, 70, 80, 90, 100, 110, 120, 130]),
-                descricao: 'Capacitação para a operação segura de máquinas e equipamentos, conforme a NR-12.'
+                descricao: 'Capacitação para a operação segura de máquinas e equipamentos, conforme a NR-12.',
+                categoryId: 'treinamentos'
             }, ],
             palestra: {
                 precos: buildTiers(Array(9).fill(600)),
@@ -1046,7 +1125,11 @@
             overlay: document.getElementById('add-service-modal'),
             form: document.getElementById('add-service-form'),
             cancelBtn: document.getElementById('modal-add-cancel-btn'),
-            show: () => addServiceModal.overlay.classList.add('visible'),
+            categorySelect: document.getElementById('service-category-select'),
+            show: () => {
+                addServiceModal.categorySelect.innerHTML = serviceCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                addServiceModal.overlay.classList.add('visible');
+            },
             hide: () => {
                 addServiceModal.overlay.classList.remove('visible');
                 addServiceModal.form.reset();
@@ -1060,7 +1143,8 @@
             serviceIdInput: document.getElementById('edit-service-id'),
             serviceOriginalCategoryInput: document.getElementById('edit-service-original-category'),
             serviceNameInput: document.getElementById('edit-service-name'),
-            serviceCategorySelect: document.getElementById('edit-service-category'),
+            billingModelSelect: document.getElementById('edit-service-billing-model'),
+            categorySelect: document.getElementById('edit-service-category-select'),
             servicePricingTypeSelect: document.getElementById('edit-service-pricing-type'),
             serviceTypeWrapper: document.getElementById('edit-service-type-wrapper'),
             serviceTypeSelect: document.getElementById('edit-service-type'),
@@ -1070,7 +1154,13 @@
                 editServiceModal.serviceOriginalCategoryInput.value = service.category;
                 editServiceModal.serviceNameInput.value = service.nome;
                 editServiceModal.serviceDescriptionInput.value = service.descricao;
-                editServiceModal.serviceCategorySelect.value = service.category;
+                editServiceModal.billingModelSelect.value = service.category;
+
+                editServiceModal.categorySelect.innerHTML = serviceCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                if (service.categoryId) {
+                    editServiceModal.categorySelect.value = service.categoryId;
+                }
+
 
                 if (service.precos) {
                     editServiceModal.servicePricingTypeSelect.value = 'faixa';
@@ -1149,6 +1239,30 @@
             hide: () => {
                 proposalDetailsModal.overlay.classList.remove('visible');
                 proposalDetailsModal.form.reset();
+            }
+        };
+
+        const categoryModal = {
+            overlay: document.getElementById('category-modal'),
+            form: document.getElementById('category-form'),
+            title: document.getElementById('category-modal-title'),
+            idInput: document.getElementById('categoryId-modal'),
+            nameInput: document.getElementById('category-name'),
+            cancelBtn: document.getElementById('modal-category-cancel-btn'),
+            show: (category = null) => {
+                categoryModal.form.reset();
+                if (category) {
+                    categoryModal.title.textContent = "Editar Categoria";
+                    categoryModal.idInput.value = category.id;
+                    categoryModal.nameInput.value = category.name;
+                } else {
+                    categoryModal.title.textContent = "Adicionar Nova Categoria";
+                    categoryModal.idInput.value = '';
+                }
+                categoryModal.overlay.classList.add('visible');
+            },
+            hide: () => {
+                categoryModal.overlay.classList.remove('visible');
             }
         };
 
@@ -1425,7 +1539,8 @@
                 name,
                 description,
                 pricingType,
-                serviceType
+                serviceType,
+                categoryId
             } = serviceData;
             const newPriceState = JSON.parse(JSON.stringify(priceState));
 
@@ -1438,6 +1553,7 @@
 
             serviceToUpdate.nome = name;
             serviceToUpdate.descricao = description;
+            serviceToUpdate.categoryId = categoryId;
 
             if (pricingType === 'faixa') {
                 if (!serviceToUpdate.precos) {
@@ -1484,6 +1600,57 @@
             } catch (error) {
                 console.error("Erro ao excluir serviço:", error);
                 toast.show("Falha ao excluir o serviço.");
+            }
+        }
+
+        async function saveServiceCategory(categoryData) {
+            const newPriceState = JSON.parse(JSON.stringify(priceState));
+            const { id, name } = categoryData;
+
+            if (id) { // Edição
+                const index = newPriceState.serviceCategories.findIndex(c => c.id === id);
+                if (index !== -1) {
+                    newPriceState.serviceCategories[index].name = name;
+                }
+            } else { // Adição
+                const newId = name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
+                newPriceState.serviceCategories.push({ id: newId, name: name });
+            }
+
+            try {
+                await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                toast.show('Categoria salva com sucesso!');
+            } catch (error) {
+                console.error("Erro ao salvar categoria:", error);
+                toast.show("Falha ao salvar a categoria.");
+            } finally {
+                categoryModal.hide();
+            }
+        }
+
+        async function deleteServiceCategory(categoryId) {
+            const newPriceState = JSON.parse(JSON.stringify(priceState));
+
+            // Remove a categoria da lista
+            newPriceState.serviceCategories = newPriceState.serviceCategories.filter(c => c.id !== categoryId);
+
+            // Remove o categoryId dos serviços associados
+            ['porVida', 'anual'].forEach(model => {
+                if(newPriceState[model]) {
+                    newPriceState[model].forEach(service => {
+                        if (service.categoryId === categoryId) {
+                            delete service.categoryId;
+                        }
+                    });
+                }
+            });
+
+            try {
+                await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                toast.show('Categoria excluída com sucesso!');
+            } catch (error) {
+                console.error("Erro ao excluir categoria:", error);
+                toast.show("Falha ao excluir a categoria.");
             }
         }
 
@@ -1608,6 +1775,7 @@
             let isInitialLoad = true;
             onSnapshot(dbRef.config, async (docSnap) => {
                 const data = docSnap.exists() ? docSnap.data().priceState : initialPriceData;
+                serviceCategories = data.serviceCategories || [];
 
                 if (isInitialLoad) {
                     console.log("Executando carregamento inicial...");
@@ -1615,6 +1783,7 @@
                     popularServicos();
                     renderPriceTable();
                     renderDescriptionTable();
+                    renderServiceCategories();
                     clearForm(true);
                     loaderElem.style.display = 'none';
                     isInitialLoad = false;
@@ -1629,6 +1798,7 @@
                     popularServicos();
                     renderPriceTable();
                     renderDescriptionTable();
+                    renderServiceCategories();
                     // ========================================================
                     // FIM: CORREÇÃO
                     // ========================================================
@@ -1751,18 +1921,68 @@
                 porVida: document.getElementById('servicos-por-vida'),
                 anual: document.getElementById('servicos-anuais')
             };
-            Object.keys(containers).forEach(key => containers[key].innerHTML = '');
+            Object.values(containers).forEach(c => c.innerHTML = '');
 
-            Object.keys(priceState).filter(k => k !== 'palestra' && containers[k]).forEach(category => {
-                const services = priceState[category];
-                if (Array.isArray(services)) {
-                    services.forEach(s => {
-                        if (s) {
-                            containers[category].appendChild(createServiceCard(s, category));
-                        }
+            const groupServicesByCategory = (services, pricingModel) => {
+                const grouped = {};
+                services.forEach(service => {
+                    const categoryId = service.categoryId || 'sem_categoria';
+                    if (!grouped[categoryId]) {
+                        grouped[categoryId] = [];
+                    }
+                    grouped[categoryId].push(service);
+                });
+                return grouped;
+            };
+
+            const renderGroupedServices = (container, pricingModel) => {
+                const services = priceState[pricingModel] || [];
+                const groupedServices = groupServicesByCategory(services, pricingModel);
+
+                serviceCategories.forEach(category => {
+                    if (groupedServices[category.id]) {
+                        const categoryWrapper = document.createElement('div');
+                        categoryWrapper.className = 'mb-6';
+                        const categoryTitle = document.createElement('h4');
+                        categoryTitle.className = 'font-semibold text-md mb-2 text-cyan-800 border-b pb-1';
+                        categoryTitle.textContent = category.name;
+                        categoryWrapper.appendChild(categoryTitle);
+
+                        const servicesGrid = document.createElement('div');
+                        servicesGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+
+                        groupedServices[category.id].forEach(service => {
+                            servicesGrid.appendChild(createServiceCard(service, pricingModel));
+                        });
+
+                        categoryWrapper.appendChild(servicesGrid);
+                        container.appendChild(categoryWrapper);
+                    }
+                });
+
+                // Render services without a category
+                if (groupedServices['sem_categoria']) {
+                    const categoryWrapper = document.createElement('div');
+                    categoryWrapper.className = 'mb-6';
+                    const categoryTitle = document.createElement('h4');
+                    categoryTitle.className = 'font-semibold text-md mb-2 text-gray-500 border-b pb-1';
+                    categoryTitle.textContent = 'Sem Categoria';
+                    categoryWrapper.appendChild(categoryTitle);
+
+                    const servicesGrid = document.createElement('div');
+                    servicesGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+
+                    groupedServices['sem_categoria'].forEach(service => {
+                        servicesGrid.appendChild(createServiceCard(service, pricingModel));
                     });
+
+                    categoryWrapper.appendChild(servicesGrid);
+                    container.appendChild(categoryWrapper);
                 }
-            });
+            };
+
+            renderGroupedServices(containers.porVida, 'porVida');
+            renderGroupedServices(containers.anual, 'anual');
         }
 
         function updateSuggestedValues() {
@@ -2084,7 +2304,7 @@
             if (!priceState.porVida) return;
             const container = document.getElementById('price-table-container');
             container.innerHTML = '';
-            Object.keys(priceState).filter(c => c !== 'palestra').forEach(category => {
+            Object.keys(priceState).filter(c => c !== 'palestra' && c !== 'serviceCategories').forEach(category => {
                 const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1);
                 let tableHtml = `<h3 class="text-lg font-semibold text-cyan-900">${categoryTitle.replace(/([A-Z])/g, ' $1').trim()}</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="bg-gray-100"><th class="p-2 text-left">Serviço</th>`;
                 TIERS.forEach(tier => tableHtml += `<th class="p-2">${tier.label}</th>`);
@@ -2166,7 +2386,7 @@
         function renderDescriptionTable() {
             if (!priceState.porVida) return;
             descriptionContainer.innerHTML = '';
-            Object.keys(priceState).forEach(category => {
+            Object.keys(priceState).filter(c => c !== 'serviceCategories').forEach(category => {
                 const services = Array.isArray(priceState[category]) ? priceState[category] : [priceState[category]];
                 services.forEach((service, serviceIndex) => {
                     if (!service) return;
@@ -2298,7 +2518,54 @@
             }
         }
 
+        function renderServiceCategories() {
+            const container = document.getElementById('category-list-container');
+            if (!container) return;
+
+            container.innerHTML = serviceCategories.map(category => `
+                <div class="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                    <p class="font-semibold text-gray-700">${category.name}</p>
+                    <div>
+                        <button class="edit-category-btn text-blue-500 hover:text-blue-700 p-1" data-id="${category.id}">✏️ Editar</button>
+                        <button class="delete-category-btn text-red-500 hover:text-red-700 p-1" data-id="${category.id}">🗑️ Excluir</button>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-center text-gray-500">Nenhuma categoria cadastrada.</p>';
+
+            container.querySelectorAll('.edit-category-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const category = serviceCategories.find(c => c.id === e.currentTarget.dataset.id);
+                    if (category) categoryModal.show(category);
+                });
+            });
+
+            container.querySelectorAll('.delete-category-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const categoryId = e.currentTarget.dataset.id;
+                    const category = serviceCategories.find(c => c.id === categoryId);
+                    if (category) {
+                        modal.show(
+                            'Excluir Categoria',
+                            `Tem certeza que deseja excluir a categoria "${category.name}"? Os serviços associados ficarão sem categoria.`,
+                            () => deleteServiceCategory(categoryId)
+                        );
+                    }
+                });
+            });
+        }
+
         // --- Event Listeners --- 
+        document.getElementById('add-category-btn').addEventListener('click', () => categoryModal.show());
+        categoryModal.cancelBtn.addEventListener('click', () => categoryModal.hide());
+        categoryModal.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const categoryData = {
+                id: categoryModal.idInput.value,
+                name: categoryModal.nameInput.value,
+            };
+            saveServiceCategory(categoryData);
+        });
+
         document.getElementById('add-service-btn').addEventListener('click', () => addServiceModal.show());
         addServiceModal.cancelBtn.addEventListener('click', () => addServiceModal.hide());
         addServiceModal.form.addEventListener('submit', async (e) => {
@@ -2307,8 +2574,9 @@
                 id: (document.getElementById('service-name').value.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now()),
                 nome: document.getElementById('service-name').value,
                 descricao: document.getElementById('service-description').value,
+                categoryId: document.getElementById('service-category-select').value,
             };
-            const category = document.getElementById('service-category').value;
+            const category = document.getElementById('service-billing-model').value;
             const pricingType = document.getElementById('service-pricing-type').value;
 
             if (pricingType === 'faixa') {
@@ -2349,9 +2617,10 @@
             const serviceData = {
                 id: editServiceModal.serviceIdInput.value,
                 originalCategory: editServiceModal.serviceOriginalCategoryInput.value,
-                newCategory: editServiceModal.serviceCategorySelect.value,
+                newCategory: editServiceModal.billingModelSelect.value,
                 name: editServiceModal.serviceNameInput.value,
                 description: editServiceModal.serviceDescriptionInput.value,
+                categoryId: editServiceModal.categorySelect.value,
                 pricingType: editServiceModal.servicePricingTypeSelect.value,
                 serviceType: editServiceModal.serviceTypeSelect.value
             };
