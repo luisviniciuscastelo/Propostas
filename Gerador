@@ -7,6 +7,7 @@
     <title>Sistema de Gerenciamento de Propostas - Medmais</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         body {
@@ -635,7 +636,10 @@
             </div>
 
             <div id="tab-preview-proposal" class="tab-content">
-                <div class="no-print mb-4 flex justify-end">
+                <div class="no-print mb-4 flex justify-end gap-2">
+                    <button id="export-word-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-all">
+                        Exportar para Word (.doc)
+                    </button>
                     <button id="export-pdf-btn" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-all">
                         Exportar para PDF
                     </button>
@@ -2426,6 +2430,40 @@
             });
         }
 
+        function exportProposalToWord() {
+            const proposalContent = document.getElementById('proposal-preview-content').innerHTML;
+            const clientName = document.getElementById('clientName').value || 'proposta';
+            const fileName = `Proposta_${clientName.replace(/\s+/g, '_')}.doc`;
+
+            const fullHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { font-family: Arial, sans-serif; font-size: 11pt; }
+                        table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+                        th, td { border: 1px solid #cccccc; text-align: left; padding: 8px; }
+                        th { background-color: #f2f2f2; }
+                        h2, h3 { color: #2c5282; }
+                        ul { margin: 0; padding-left: 20px; }
+                    </style>
+                </head>
+                <body>
+                    ${proposalContent}
+                </body>
+                </html>
+            `;
+
+            const converted = htmlDocx.asBlob(fullHtml);
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(converted);
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         function exportProposalToPdf() {
             const clientName = document.getElementById('clientName').value || 'proposta';
             const fileName = `Proposta_${clientName.replace(/\s+/g, '_')}.pdf`;
@@ -2484,7 +2522,7 @@
             watermarkImg.onload = function () {
                 html2pdf().from(pdfContainer).set(opt).save();
             };
-            watermarkImg.src = watermarkDataUrl;
+            watermarkImg.src = watermarkUrl;
 
         }
 
@@ -2683,6 +2721,7 @@
             createDynamicRow('palestras-container', 'Tema da Palestra', runAllUpdates, price);
         });
         document.getElementById('add-outro').addEventListener('click', () => createDynamicRow('outros-container', 'Descrição do Serviço', runAllUpdates));
+        document.getElementById('export-word-btn').addEventListener('click', exportProposalToWord);
         document.getElementById('export-pdf-btn').addEventListener('click', exportProposalToPdf);
 
         document.querySelectorAll('.tab-button').forEach(button => {
