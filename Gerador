@@ -7,7 +7,7 @@
     <title>Sistema de Gerenciamento de Propostas - Medmais</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -543,10 +543,13 @@
                         </div>
 
                         <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-                            <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">2. Seleção de Serviços</h2>
+                            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                                <h2 class="text-xl font-semibold text-cyan-800">2. Seleção de Serviços</h2>
+                                <input type="text" id="service-search-input" placeholder="🔎 Buscar serviço..." class="p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                            </div>
                             <section>
                                 <h3 class="font-semibold text-lg mb-3 text-cyan-900">Serviços por Vida (Custo Mensal por Funcionário)</h3>
-                                <div id="servicos-por-vida" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                                <div id="servicos-por-vida" class="space-y-4"></div>
                             </section>
                             <section class="mt-8">
                                 <h3 class="font-semibold text-lg mb-3 text-cyan-900">Serviços Contratuais (Custo Anual Amortizado Mensalmente)</h3>
@@ -633,11 +636,11 @@
 
             <div id="tab-preview-proposal" class="tab-content">
                 <div class="no-print mb-4 flex justify-end">
-                    <button id="export-word-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-all">
-                        Exportar para Word (.doc)
+                    <button id="export-pdf-btn" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-all">
+                        Exportar para PDF
                     </button>
                 </div>
-                <div id="proposal-preview-content" class="printable-area bg-white p-8 shadow-lg"></div>
+                <div id="proposal-preview-content" contenteditable="true" class="printable-area bg-white p-8 shadow-lg prose max-w-none"></div>
             </div>
             <div id="tab-preview-contract" class="tab-content printable-area bg-white p-8 shadow-lg"></div>
 
@@ -2133,7 +2136,14 @@
                         serviceData = services.find(db_s => db_s.id === s.id);
                     }
                 }
-                return `<tr><td class="p-2 border font-semibold">${s.theme || s.nome}</td><td class="p-2 border">${serviceData?.descricao || ''}</td></tr>`;
+
+                let serviceName = s.theme || s.nome;
+                if (s.tipo === 'quantidade' && s.quantity) {
+                    const unitLabel = s.obs || (s.quantity > 1 ? 'unidades' : 'unidade');
+                    serviceName += ` (${s.quantity} ${unitLabel})`;
+                }
+
+                return `<tr><td class="p-2 border font-semibold">${serviceName}</td><td class="p-2 border">${serviceData?.descricao || ''}</td></tr>`;
             }).join('');
 
             return `<div class="prose max-w-none"> 
@@ -2416,38 +2426,66 @@
             });
         }
 
-        function exportProposalToWord() {
-            const proposalContent = document.getElementById('proposal-preview-content').innerHTML;
+        function exportProposalToPdf() {
             const clientName = document.getElementById('clientName').value || 'proposta';
-            const fileName = `Proposta_${clientName.replace(/\s+/g, '_')}.doc`;
+            const fileName = `Proposta_${clientName.replace(/\s+/g, '_')}.pdf`;
 
-            const fullHtml = ` 
-                <!DOCTYPE html> 
-                <html> 
-                <head> 
-                    <meta charset="UTF-8"> 
-                    <style> 
-                        body { font-family: Arial, sans-serif; font-size: 11pt; } 
-                        table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; } 
-                        th, td { border: 1px solid #cccccc; text-align: left; padding: 8px; } 
-                        th { background-color: #f2f2f2; } 
-                        h2, h3 { color: #2c5282; } 
-                        ul { margin: 0; padding-left: 20px; } 
-                    </style> 
-                </head> 
-                <body> 
-                    ${proposalContent} 
-                </body> 
-                </html> 
+            // 1. Create a container for PDF generation
+            const pdfContainer = document.createElement('div');
+
+            // 2. Create the Cover Page
+            const coverPage = document.createElement('div');
+            coverPage.style.width = '210mm';
+            coverPage.style.height = '297mm';
+            coverPage.style.display = 'flex';
+            coverPage.style.flexDirection = 'column';
+            coverPage.style.justifyContent = 'center';
+            coverPage.style.alignItems = 'center';
+            coverPage.style.border = '1px solid #ccc';
+            coverPage.innerHTML = `
+                <img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" style="width: 150px; margin-bottom: 40px;">
+                <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 20px;">Proposta Comercial</h1>
+                <p style="font-size: 16px;">${new Date().toLocaleDateString('pt-BR')}</p>
             `;
+            pdfContainer.appendChild(coverPage);
 
-            const converted = htmlDocx.asBlob(fullHtml);
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(converted);
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // 3. Clone the proposal content
+            const proposalContent = document.getElementById('proposal-preview-content').cloneNode(true);
+            proposalContent.classList.add('html2pdf__page-break'); // Add page break after cover
+            pdfContainer.appendChild(proposalContent);
+
+            // 4. Set options for html2pdf
+            const watermarkUrl = 'https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png';
+
+            const opt = {
+                margin: [0, 0, 0, 0],
+                filename: fileName,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['css'] },
+                // Watermark logic
+                workercanvas: {
+                    onrendered: function (canvas) {
+                        // Don't add watermark on the first page (cover)
+                        if (canvas.pdf.getPage() === 1) return;
+
+                        const ctx = canvas.getContext('2d');
+                        // Scale and position the watermark
+                        ctx.globalAlpha = 0.05; // Watermark opacity
+                        ctx.drawImage(watermarkImg, canvas.width / 4, canvas.height / 3, canvas.width / 2, canvas.height / 3);
+                    }
+                }
+            };
+
+            // Pre-load the watermark image to avoid CORS issues
+            const watermarkImg = new Image();
+            watermarkImg.crossOrigin = "anonymous";
+            watermarkImg.onload = function () {
+                html2pdf().from(pdfContainer).set(opt).save();
+            };
+            watermarkImg.src = watermarkDataUrl;
+
         }
 
         // --- CLIENTS FUNCTIONS --- 
@@ -2645,7 +2683,7 @@
             createDynamicRow('palestras-container', 'Tema da Palestra', runAllUpdates, price);
         });
         document.getElementById('add-outro').addEventListener('click', () => createDynamicRow('outros-container', 'Descrição do Serviço', runAllUpdates));
-        document.getElementById('export-word-btn').addEventListener('click', exportProposalToWord);
+        document.getElementById('export-pdf-btn').addEventListener('click', exportProposalToPdf);
 
         document.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', () => {
@@ -2757,6 +2795,23 @@
                 clientSearchResults.innerHTML = '';
                 clientSearchResults.classList.add('hidden');
             }
+        });
+
+        document.getElementById('service-search-input').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+
+            document.querySelectorAll('.service-card').forEach(card => {
+                const serviceName = card.querySelector('h4').textContent.toLowerCase();
+                const matches = serviceName.includes(searchTerm);
+                card.style.display = matches ? '' : 'none';
+            });
+
+            // Oculta os títulos das categorias se todos os serviços estiverem ocultos
+            document.querySelectorAll('#servicos-por-vida > div, #servicos-anuais > div').forEach(categoryWrapper => {
+                const services = categoryWrapper.querySelectorAll('.service-card');
+                const allHidden = Array.from(services).every(s => s.style.display === 'none');
+                categoryWrapper.style.display = allHidden ? 'none' : '';
+            });
         });
 
         document.body.addEventListener('click', (e) => {
