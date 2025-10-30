@@ -511,7 +511,6 @@
                     <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="preview-contract">Prévia do Contrato</button>
                     <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="saved">Propostas Salvas</button>
                     <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="prices">Tabela de Preços</button>
-                    <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="descriptions">Descrição dos Serviços</button>
                 </nav>
             </div>
 
@@ -691,14 +690,6 @@
                         <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Log de Alterações de Preços</h2>
                         <div id="price-log-container" class="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto bg-gray-50 p-4 rounded-lg"></div>
                     </div>
-                </div>
-            </div>
-
-            <div id="tab-descriptions" class="tab-content">
-                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-                    <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Descrição Padrão dos Serviços</h2>
-                    <p class="text-sm text-gray-600 mb-6">Edite as descrições que aparecerão nas propostas e contratos. As mudanças serão salvas na nuvem.</p>
-                    <div id="description-table-container" class="space-y-6"></div>
                 </div>
             </div>
         </div>
@@ -1073,7 +1064,6 @@
         const savedProposalsContainer = document.getElementById('saved-proposals-container');
         const priceLogContainer = document.getElementById('price-log-container');
         const proposalLogContainer = document.getElementById('proposal-log-container');
-        const descriptionContainer = document.getElementById('description-table-container');
 
         const loginModal = document.getElementById('login-modal');
         const mainAppContainer = document.getElementById('main-app-container');
@@ -1510,34 +1500,6 @@
             }
         }
 
-        async function updateDescriptionInDB(category, serviceId, value) {
-            const newPriceState = JSON.parse(JSON.stringify(priceState));
-
-            if (category === 'palestra') {
-                newPriceState.palestra.descricao = value;
-            } else {
-                const services = newPriceState[category];
-                if (!Array.isArray(services)) return;
-                const serviceIndex = services.findIndex(s => s.id === serviceId);
-                if (serviceIndex !== -1) {
-                    newPriceState[category][serviceIndex].descricao = value;
-                } else {
-                    return;
-                }
-            }
-
-            try {
-                await setDoc(dbRef.config, {
-                    priceState: newPriceState
-                }, {
-                    merge: true
-                });
-            } catch (error) {
-                console.error("Erro ao atualizar descrição:", error);
-                toast.show("Falha ao salvar alteração de descrição.");
-            }
-        }
-
         async function updateServiceInDB(serviceData) {
             const {
                 id,
@@ -1793,7 +1755,6 @@
                     priceState = data;
                     popularServicos();
                     renderPriceTable();
-                    renderDescriptionTable();
                     renderServiceCategories();
                     clearForm(true);
                     loaderElem.style.display = 'none';
@@ -1808,7 +1769,6 @@
                     // Precisamos reconstruir TODAS as seções que dependem dos preços
                     popularServicos();
                     renderPriceTable();
-                    renderDescriptionTable();
                     renderServiceCategories();
                     // ========================================================
                     // FIM: CORREÇÃO
@@ -2401,47 +2361,46 @@
             }
         }
 
-        function renderDescriptionTable() {
-            if (!priceState.porVida) return;
-            descriptionContainer.innerHTML = '';
-            Object.keys(priceState).filter(c => c !== 'serviceCategories').forEach(category => {
-                const services = Array.isArray(priceState[category]) ? priceState[category] : [priceState[category]];
-                services.forEach((service, serviceIndex) => {
-                    if (!service) return;
-                    if (!service.nome && category === 'palestra') service.nome = 'Palestra Exclusiva';
-                    if (!service.nome) return;
-
-                    const div = document.createElement('div');
-                    div.innerHTML = ` 
-                        <label class="font-semibold text-gray-800">${service.nome}</label> 
-                        <textarea class="description-textarea mt-1" data-category="${category}" data-service-id="${service.id}">${service.descricao || ''}</textarea> 
-                    `;
-                    descriptionContainer.appendChild(div);
-                });
-            });
-            descriptionContainer.querySelectorAll('.description-textarea').forEach(textarea => {
-                textarea.addEventListener('change', (e) => {
-                    const {
-                        category,
-                        serviceId
-                    } = e.target.dataset;
-                    updateDescriptionInDB(category, serviceId, e.target.value);
-                });
-            });
-        }
-
         function exportProposalToWord() {
-            const proposalContent = document.getElementById('proposal-preview-content').innerHTML;
             const clientName = document.getElementById('clientName').value || 'proposta';
             const fileName = `Proposta_${clientName.replace(/\s+/g, '_')}.doc`;
 
+            // 1. Create Cover Page HTML
+            const coverPageHtml = `
+                <div style="width: 100%; height: 297mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                    <img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" style="width: 150px; margin-bottom: 40px;">
+                    <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 20px;">Proposta Comercial</h1>
+                    <p style="font-size: 16px;">${new Date().toLocaleDateString('pt-BR')}</p>
+                </div>
+                <br clear="all" style="page-break-before:always">
+            `;
+
+            // 2. Get Proposal Content
+            const proposalContent = document.getElementById('proposal-preview-content').innerHTML;
+
+            // 3. Combine and wrap in full HTML with styles for Word
             const fullHtml = `
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <meta charset="UTF-8">
                     <style>
-                        body { font-family: Arial, sans-serif; font-size: 11pt; }
+                        @page {
+                            size: A4 portrait;
+                            margin: 5cm;
+                        }
+                        body {
+                            font-family: Arial, sans-serif;
+                            font-size: 11pt;
+                            background-image: url('https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png');
+                            background-repeat: no-repeat;
+                            background-position: center;
+                            background-size: 40%;
+                        }
+                        /* Hide watermark on the first page (cover) */
+                        @page :first {
+                            background-image: none;
+                        }
                         table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
                         th, td { border: 1px solid #cccccc; text-align: left; padding: 8px; }
                         th { background-color: #f2f2f2; }
@@ -2450,12 +2409,16 @@
                     </style>
                 </head>
                 <body>
+                    ${coverPageHtml}
                     ${proposalContent}
                 </body>
                 </html>
             `;
 
-            const converted = htmlDocx.asBlob(fullHtml);
+            const converted = htmlDocx.asBlob(fullHtml, {
+                orientation: 'portrait',
+                margins: { top: 2835, right: 2835, bottom: 2835, left: 2835 } // 1 cm = 567 twips, so 5 cm = 2835 twips
+            });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(converted);
             link.download = fileName;
@@ -2493,37 +2456,40 @@
             pdfContainer.appendChild(proposalContent);
 
             // 4. Set options for html2pdf
-            const watermarkUrl = 'https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png';
-
             const opt = {
                 margin: [0, 0, 0, 0],
                 filename: fileName,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak: { mode: ['css'] },
-                // Watermark logic
-                workercanvas: {
-                    onrendered: function (canvas) {
-                        // Don't add watermark on the first page (cover)
-                        if (canvas.pdf.getPage() === 1) return;
-
-                        const ctx = canvas.getContext('2d');
-                        // Scale and position the watermark
-                        ctx.globalAlpha = 0.05; // Watermark opacity
-                        ctx.drawImage(watermarkImg, canvas.width / 4, canvas.height / 3, canvas.width / 2, canvas.height / 3);
-                    }
-                }
+                pagebreak: { mode: ['css'] }
             };
 
-            // Pre-load the watermark image to avoid CORS issues
+            const watermarkUrl = 'https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png';
+
             const watermarkImg = new Image();
             watermarkImg.crossOrigin = "anonymous";
             watermarkImg.onload = function () {
-                html2pdf().from(pdfContainer).set(opt).save();
+                // Now that the image is loaded, generate the PDF
+                html2pdf().from(pdfContainer).set(opt).toPdf().get('pdf').then(function (pdf) {
+                    const totalPages = pdf.internal.getNumberOfPages();
+                    const pageWidth = pdf.internal.pageSize.getWidth();
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+
+                    const wmWidth = pageWidth / 2;
+                    const wmHeight = (watermarkImg.height * wmWidth) / watermarkImg.width;
+                    const wmX = (pageWidth - wmWidth) / 2;
+                    const wmY = (pageHeight - wmHeight) / 2;
+
+                    for (let i = 2; i <= totalPages; i++) { // Start from page 2
+                        pdf.setPage(i);
+                        pdf.setGState(new pdf.GState({opacity: 0.05}));
+                        pdf.addImage(watermarkImg, 'PNG', wmX, wmY, wmWidth, wmHeight);
+                        pdf.setGState(new pdf.GState({opacity: 1}));
+                    }
+                }).save();
             };
             watermarkImg.src = watermarkUrl;
-
         }
 
         // --- CLIENTS FUNCTIONS --- 
