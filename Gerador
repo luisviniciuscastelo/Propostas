@@ -1607,6 +1607,10 @@
             const newPriceState = JSON.parse(JSON.stringify(priceState));
             const { id, name } = categoryData;
 
+            if (!Array.isArray(newPriceState.serviceCategories)) {
+                newPriceState.serviceCategories = [];
+            }
+
             if (id) { // Edição
                 const index = newPriceState.serviceCategories.findIndex(c => c.id === id);
                 if (index !== -1) {
