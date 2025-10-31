@@ -632,7 +632,7 @@
                             <div>
                                 <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Resumo da Proposta</h2>
                                 <div id="resumo-detalhado" class="space-y-1 text-sm border-b pb-2 mb-2"></div>
-                                <div class="space-y-2 text-sm">
+                                <div id="resumo-interno" class="space-y-2 text-sm">
                                     <div class="flex justify-between font-bold"><span class="text-gray-600">Custo Operacional Mensal:</span> <span id="resumo-custo">R$ 0,00</span></div>
                                     <div class="flex justify-between"><span class="text-gray-600">Impostos:</span> <span id="resumo-imposto" class="font-medium">R$ 0,00</span></div>
                                     <div class="flex justify-between"><span class="text-gray-600">Lucro Líquido:</span> <span id="resumo-lucro" class="font-medium">R$ 0,00</span></div>
@@ -1758,6 +1758,9 @@
             const financialParams = document.getElementById('financial-parameters');
             const btnSaveProposal = document.getElementById('btn-save-proposal');
             const btnAcceptProposal = document.getElementById('btn-accept-proposal');
+            const resumoInterno = document.getElementById('resumo-interno');
+            const addPalestraBtn = document.getElementById('add-palestra');
+            const addOutroBtn = document.getElementById('add-outro');
 
             if (user && !user.isAnonymous) {
                 // --- VENDEDOR LOGADO ---
@@ -1773,12 +1776,16 @@
 
                 vendorOnlyTabs.forEach(tab => tab && (tab.style.display = ''));
                 if (financialParams) financialParams.style.display = '';
+                if (resumoInterno) resumoInterno.style.display = '';
+                if (addPalestraBtn) addPalestraBtn.style.display = '';
+                if (addOutroBtn) addOutroBtn.style.display = '';
+
                 document.getElementById('generator-add-client-btn').style.display = '';
                 btnSaveProposal.style.display = '';
                 btnAcceptProposal.style.display = 'none';
 
                 // Make client fields readonly for vendor view
-                const clientFields = [formElements.clientName, formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
+                const clientFields = [formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
                 clientFields.forEach(field => {
                     if (field) {
                         field.readOnly = true;
@@ -1808,6 +1815,9 @@
 
                 vendorOnlyTabs.forEach(tab => tab && (tab.style.display = 'none'));
                 if (financialParams) financialParams.style.display = 'none';
+                if (resumoInterno) resumoInterno.style.display = 'none';
+                if (addPalestraBtn) addPalestraBtn.style.display = 'none';
+                if (addOutroBtn) addOutroBtn.style.display = 'none';
                 document.getElementById('generator-add-client-btn').style.display = 'none';
                 btnSaveProposal.style.display = 'none';
                 btnAcceptProposal.style.display = '';
@@ -2146,7 +2156,7 @@
                 if (category === 'porVida') {
                     const total = price * vidas;
                     monthlyContribution = total;
-                    if (totalPriceDisplay) totalPriceDisplay.textContent = `= ${formatCurrency(total)}`;
+                    if (totalPriceDisplay && !isClientView) totalPriceDisplay.textContent = `= ${formatCurrency(total)}`;
                 } else if (category === 'anual') {
                     const quantity = parseInt(card.querySelector('.quantity-input') ?.value || 1);
                     let totalAnual = price * (service.tipo === 'fixo' ? 1 : quantity);
@@ -2156,7 +2166,7 @@
                         else if (frequency === 'semanal') totalAnual = price * quantity * 52;
                     }
                     monthlyContribution = totalAnual / 12;
-                    if (totalPriceDisplay) {
+                    if (totalPriceDisplay && !isClientView) {
                         const detailText = service.tipo === 'quantidade' ? `<span class="text-xs">${quantity}x${formatCurrency(price)}</span> = ` : '';
                         totalPriceDisplay.innerHTML = `${detailText}${formatCurrency(totalAnual)}/ano`;
                     }
@@ -2179,8 +2189,11 @@
                     id: 'outro'
                 });
             });
-
-            resumo.detalhado.innerHTML = detailedCosts.map(item => `<div class="flex justify-between"><span>${item.name}</span><span>${formatCurrency(item.cost)}</span></div>`).join('');
+            if (!isClientView) {
+                resumo.detalhado.innerHTML = detailedCosts.map(item => `<div class="flex justify-between"><span>${item.name}</span><span>${formatCurrency(item.cost)}</span></div>`).join('');
+            } else {
+                resumo.detalhado.innerHTML = '';
+            }
 
             const taxRate = parseCurrency(formElements.tax.value) / 100;
             const profitRate = parseCurrency(formElements.profit.value) / 100;
