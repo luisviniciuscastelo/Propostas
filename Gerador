@@ -2427,69 +2427,50 @@
             document.body.removeChild(link);
         }
 
-        function exportProposalToPdf() {
-            const clientName = document.getElementById('clientName').value || 'proposta';
-            const fileName = `Proposta_${clientName.replace(/\s+/g, '_')}.pdf`;
-
-            // 1. Create a container for PDF generation
-            const pdfContainer = document.createElement('div');
-
-            // 2. Create the Cover Page
-            const coverPage = document.createElement('div');
-            coverPage.style.width = '210mm';
-            coverPage.style.height = '297mm';
-            coverPage.style.display = 'flex';
-            coverPage.style.flexDirection = 'column';
-            coverPage.style.justifyContent = 'center';
-            coverPage.style.alignItems = 'center';
-            coverPage.style.border = '1px solid #ccc';
-            coverPage.innerHTML = `
-                <img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" style="width: 150px; margin-bottom: 40px;">
-                <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 20px;">Proposta Comercial</h1>
-                <p style="font-size: 16px;">${new Date().toLocaleDateString('pt-BR')}</p>
-            `;
-            pdfContainer.appendChild(coverPage);
-
-            // 3. Clone the proposal content
-            const proposalContent = document.getElementById('proposal-preview-content').cloneNode(true);
-            proposalContent.classList.add('html2pdf__page-break'); // Add page break after cover
-            pdfContainer.appendChild(proposalContent);
-
-            // 4. Set options for html2pdf
-            const opt = {
-                margin: [0, 0, 0, 0],
-                filename: fileName,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak: { mode: ['css'] }
             };
 
-            const watermarkUrl = 'https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png';
+            html2pdf().from(pdfContainer).set(opt).toPdf().get('pdf').then(function (pdf) {
+                const totalPages = pdf.internal.getNumberOfPages();
+                if (totalPages > 1) {
+                    // Crie um objeto de imagem para a marca d'água
+                    const watermarkImg = new Image();
+                    watermarkImg.src = watermarkDataUrl; // Sua string base64 aqui
 
-            const watermarkImg = new Image();
-            watermarkImg.crossOrigin = "anonymous";
-            watermarkImg.onload = function () {
-                // Now that the image is loaded, generate the PDF
-                html2pdf().from(pdfContainer).set(opt).toPdf().get('pdf').then(function (pdf) {
-                    const totalPages = pdf.internal.getNumberOfPages();
-                    const pageWidth = pdf.internal.pageSize.getWidth();
-                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    // Aguarde a imagem carregar
+                    watermarkImg.onload = function() {
+                        const pageWidth = pdf.internal.pageSize.getWidth();
+                        const pageHeight = pdf.internal.pageSize.getHeight();
 
-                    const wmWidth = pageWidth / 2;
-                    const wmHeight = (watermarkImg.height * wmWidth) / watermarkImg.width;
-                    const wmX = (pageWidth - wmWidth) / 2;
-                    const wmY = (pageHeight - wmHeight) / 2;
+                        // Calcule as dimensões da marca d'água para manter a proporção
+                        const wmWidth = pageWidth / 2;
+                        const wmHeight = (watermarkImg.height * wmWidth) / watermarkImg.width;
+                        const wmX = (pageWidth - wmWidth) / 2;
+                        const wmY = (pageHeight - wmHeight) / 2;
 
-                    for (let i = 2; i <= totalPages; i++) { // Start from page 2
-                        pdf.setPage(i);
-                        pdf.setGState(new pdf.GState({opacity: 0.05}));
-                        pdf.addImage(watermarkImg, 'PNG', wmX, wmY, wmWidth, wmHeight);
-                        pdf.setGState(new pdf.GState({opacity: 1}));
-                    }
-                }).save();
-            };
-            watermarkImg.src = watermarkUrl;
+                        // Adicione a marca d'água a todas as páginas, exceto a primeira
+                        for (let i = 2; i <= totalPages; i++) {
+                            pdf.setPage(i);
+                            // Defina a opacidade para a marca d'água
+                            pdf.setGState(new pdf.GState({opacity: 0.05}));
+                            pdf.addImage(watermarkImg, 'PNG', wmX, wmY, wmWidth, wmHeight);
+                            // Restaure a opacidade para o conteúdo normal
+                            pdf.setGState(new pdf.GState({opacity: 1}));
+                        }
+
+                        // Salve o PDF após adicionar a marca d'água
+                        pdf.save(fileName);
+                    };
+
+                    // Tratamento de erro caso a imagem não carregue
+                    watermarkImg.onerror = function() {
+                        console.error("Erro ao carregar a imagem da marca d'água.");
+                        pdf.save(fileName); // Salva o PDF mesmo sem a marca d'água
+                    };
+                } else {
+                    // Se houver apenas uma página (capa), salve diretamente
+                    pdf.save(fileName);
+                }
+            }).catch(err => console.error("Erro ao gerar o PDF:", err));
         }
 
         // --- CLIENTS FUNCTIONS --- 
