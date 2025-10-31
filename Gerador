@@ -1118,6 +1118,7 @@
         const loginModal = document.getElementById('login-modal');
         const mainAppContainer = document.getElementById('main-app-container');
         const loginForm = document.getElementById('login-form');
+        const loginMessage = document.getElementById('login-message');
         const btnLogout = document.getElementById('btn-logout');
         const forgotPasswordLink = document.getElementById('forgot-password-link');
         const userInfoDisplay = document.getElementById('user-info-display');
@@ -1776,6 +1777,17 @@
                 btnSaveProposal.style.display = '';
                 btnAcceptProposal.style.display = 'none';
 
+                // Make client fields readonly for vendor view
+                const clientFields = [formElements.clientName, formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
+                clientFields.forEach(field => {
+                    if (field) {
+                        field.readOnly = true;
+                        field.classList.add('bg-gray-100');
+                    }
+                });
+                clientNameInput.addEventListener('input', handleClientSearch);
+
+
                 dbRef.proposals = collection(db, `artifacts/${appId}/users/${userId}/proposals`);
                 dbRef.clients = collection(db, `artifacts/${appId}/users/${userId}/clients`);
                 dbRef.logs = doc(db, `artifacts/${appId}/users/${userId}/userLogs/main`);
@@ -1800,6 +1812,16 @@
                 btnSaveProposal.style.display = 'none';
                 btnAcceptProposal.style.display = '';
                 document.getElementById('btn-new-proposal').style.display = 'none';
+
+                // Make client fields editable for client view
+                const clientFields = [formElements.clientName, formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
+                clientFields.forEach(field => {
+                    if (field) {
+                        field.readOnly = false;
+                        field.classList.remove('bg-gray-100');
+                    }
+                });
+                clientNameInput.removeEventListener('input', handleClientSearch);
 
                 const activeTab = document.querySelector('.tab-button.active');
                 if (activeTab && activeTab.style.display === 'none') {
@@ -3020,8 +3042,8 @@
         const clientNameInput = document.getElementById('clientName');
         const clientSearchResults = document.getElementById('client-search-results');
 
-        clientNameInput.addEventListener('input', () => {
-            // Limpa os campos de contato ao digitar um novo nome
+        const handleClientSearch = () => {
+             // Limpa os campos de contato ao digitar um novo nome
             formElements.clientContactPerson.value = '';
             formElements.clientContactRole.value = '';
             formElements.clientEmail.value = '';
@@ -3044,7 +3066,9 @@
             } else {
                 clientSearchResults.classList.add('hidden');
             }
-        });
+        };
+
+        clientNameInput.addEventListener('input', handleClientSearch);
 
         clientSearchResults.addEventListener('click', (e) => {
             if (e.target.dataset.id) {
