@@ -810,6 +810,9 @@
         let vendorProposals = [];
         let publicProposals = [];
 
+        let isInitialLoad = true;
+        let configListenerAttached = false;
+
         // --- DADOS INICIAIS (FALLBACK) --- 
         const TIERS = [{
             min: 0,
@@ -1852,9 +1855,6 @@
         });
 
         function setupListeners() {
-            let isInitialLoad = true;
-            let configListenerAttached = false;
-
             if (!configListenerAttached) {
                 onSnapshot(dbRef.config, async (docSnap) => {
                     const data = docSnap.exists() ? docSnap.data().priceState : initialPriceData;
