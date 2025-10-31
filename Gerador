@@ -1437,7 +1437,10 @@
                             const card = document.querySelector(`.service-card[data-id="${s.id}"]`);
                             if (card) {
                                 if (!card.classList.contains('selected')) card.click();
-                                card.querySelector('.price-input').value = s.price.toFixed(2).replace('.', ',');
+                                const priceInput = card.querySelector('.price-input');
+                                if (priceInput) {
+                                    priceInput.value = s.price.toFixed(2).replace('.', ',');
+                                }
                                 if (card.querySelector('.quantity-input')) card.querySelector('.quantity-input').value = s.quantity;
                                 if (card.querySelector('.frequency-selector')) card.querySelector('.frequency-selector').value = s.frequency;
                             }
@@ -2049,6 +2052,8 @@
         function updateSuggestedValues() {
             if (!priceState.porVida) return;
             const vidas = parseInt(formElements.numVidas.value) || 0;
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+
             document.querySelectorAll('.service-card').forEach(card => {
                 const {
                     id,
@@ -2059,14 +2064,18 @@
 
                 const service = services.find(s => s.id === id);
                 if (!service) return;
-                const priceInput = card.querySelector('.price-input');
-                let pricePerUnit = service.preco ?? getPriceFromState(vidas, service.precos);
-                if (service.isDynamic) {
-                    const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
-                    const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
-                    pricePerUnit = (pgrPrice + pcmsoPrice) * service.multiplier;
+
+                if (!isClientView) {
+                    const priceInput = card.querySelector('.price-input');
+                    let pricePerUnit = service.preco ?? getPriceFromState(vidas, service.precos);
+                    if (service.isDynamic) {
+                        const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
+                        const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
+                        pricePerUnit = (pgrPrice + pcmsoPrice) * service.multiplier;
+                    }
+                    priceInput.value = pricePerUnit.toFixed(2).replace('.', ',');
                 }
-                priceInput.value = pricePerUnit.toFixed(2).replace('.', ',');
+
                 if (service.sugestao_fator) {
                     const qtyInput = card.querySelector('.quantity-input');
                     if (qtyInput) {
@@ -2084,6 +2093,7 @@
             const vidas = parseInt(formElements.numVidas.value) || 0;
             let custoMensal = 0;
             let detailedCosts = [];
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
 
             document.querySelectorAll('.service-card.selected').forEach(card => {
                 const {
@@ -2096,7 +2106,18 @@
                 const service = services.find(s => s.id === id);
                 if (!service) return;
 
-                const price = parseCurrency(card.querySelector('.price-input').value);
+                let price;
+                if (isClientView) {
+                    price = service.preco ?? getPriceFromState(vidas, service.precos);
+                     if (service.isDynamic) { // Recalculate dynamic price if needed
+                        const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
+                        const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
+                        price = (pgrPrice + pcmsoPrice) * service.multiplier;
+                    }
+                } else {
+                    price = parseCurrency(card.querySelector('.price-input').value);
+                }
+
                 const totalPriceDisplay = card.querySelector('.total-price-display');
                 let monthlyContribution = 0;
 
