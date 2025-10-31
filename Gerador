@@ -1855,13 +1855,31 @@
         });
 
         function setupListeners() {
+            // Fallback Timer: If Firebase takes too long, load with default data.
+            const fallbackTimeout = setTimeout(() => {
+                if (isInitialLoad) {
+                    console.warn("Firebase demorou para responder. Carregando com dados padrão.");
+                    priceState = initialPriceData;
+                    serviceCategories = initialPriceData.serviceCategories || [];
+
+                    popularServicos();
+                    renderPriceTable();
+                    renderServiceCategories();
+                    clearForm(true);
+                    loaderElem.style.display = 'none';
+                    isInitialLoad = false; // Mark initial load as complete
+                }
+            }, 5000); // 5 seconds timeout
+
             if (!configListenerAttached) {
                 onSnapshot(dbRef.config, async (docSnap) => {
+                    clearTimeout(fallbackTimeout); // Clear the timeout if Firebase responds in time
                     const data = docSnap.exists() ? docSnap.data().priceState : initialPriceData;
-                    serviceCategories = data.serviceCategories || [];
 
                     if (isInitialLoad) {
                         priceState = data;
+                        serviceCategories = data.serviceCategories || [];
+
                         popularServicos();
                         renderPriceTable();
                         renderServiceCategories();
@@ -1869,14 +1887,28 @@
                         loaderElem.style.display = 'none';
                         isInitialLoad = false;
                     } else {
+                        // If the fallback has already loaded the app, just update the state silently
                         priceState = data;
+                        serviceCategories = data.serviceCategories || [];
                         popularServicos();
                         renderPriceTable();
                         renderServiceCategories();
                     }
                 }, (error) => {
                     console.error("Erro ao ouvir configurações:", error);
-                    loaderElem.textContent = "Erro ao carregar dados de configuração.";
+                    clearTimeout(fallbackTimeout); // Clear timeout on error too
+                    // If initial load hasn't completed, use fallback data
+                    if (isInitialLoad) {
+                        console.warn("Erro no Firebase. Carregando com dados padrão.");
+                        priceState = initialPriceData;
+                        serviceCategories = initialPriceData.serviceCategories || [];
+                        popularServicos();
+                        renderPriceTable();
+                        renderServiceCategories();
+                        clearForm(true);
+                        loaderElem.style.display = 'none';
+                        isInitialLoad = false;
+                    }
                 });
                 configListenerAttached = true;
             }
