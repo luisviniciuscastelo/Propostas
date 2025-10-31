@@ -2375,31 +2375,34 @@
                 <br clear="all" style="page-break-before:always">
             `;
 
-            // 2. Get Proposal Content
+            // 2. Create Header and Footer HTML
+            const headerHtml = `
+                <div style="text-align: center; font-size: 10pt; color: #555; margin-bottom: 20px;">
+                    <p>Proposta Comercial - MedMais Soluções Médicas</p>
+                    <hr>
+                </div>
+            `;
+
+            const footerHtml = `
+                <div style="text-align: center; font-size: 8pt; color: #555; margin-top: 20px;">
+                    <hr>
+                    <p>Rua Antônio Augusto, 1271. Sala 201. Edifício Medical Gênesis. Aldeota. Fortaleza-CE.</p>
+                </div>
+            `;
+
+            // 3. Get Proposal Content
             const proposalContent = document.getElementById('proposal-preview-content').innerHTML;
 
-            // 3. Combine and wrap in full HTML with styles for Word
+            // 4. Combine and wrap in full HTML with styles for Word
             const fullHtml = `
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <meta charset="UTF-8">
                     <style>
-                        @page {
-                            size: A4 portrait;
-                            margin: 5cm;
-                        }
                         body {
                             font-family: Arial, sans-serif;
                             font-size: 11pt;
-                            background-image: url('https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png');
-                            background-repeat: no-repeat;
-                            background-position: center;
-                            background-size: 40%;
-                        }
-                        /* Hide watermark on the first page (cover) */
-                        @page :first {
-                            background-image: none;
                         }
                         table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
                         th, td { border: 1px solid #cccccc; text-align: left; padding: 8px; }
@@ -2410,14 +2413,16 @@
                 </head>
                 <body>
                     ${coverPageHtml}
+                    ${headerHtml}
                     ${proposalContent}
+                    ${footerHtml}
                 </body>
                 </html>
             `;
 
             const converted = htmlDocx.asBlob(fullHtml, {
                 orientation: 'portrait',
-                margins: { top: 2835, right: 2835, bottom: 2835, left: 2835 } // 1 cm = 567 twips, so 5 cm = 2835 twips
+                margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 } // 1 inch = 1440 twips, approx 2.54cm
             });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(converted);
@@ -2430,9 +2435,6 @@
         function exportProposalToPdf() {
             const clientName = document.getElementById('clientName').value || 'proposta';
             const fileName = `Proposta_${clientName.replace(/\s+/g, '_')}.pdf`;
-
-            // Embed the watermark image as a Base64 string to ensure it always loads
-            const watermarkDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARgAAAEYCAYAAACHIU/9AAAACXBIWXMAACE4AAAhOAFFljFgAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAjRSURBVHgB7d2NbdtGGIbh+2d+uA4gVpC5G+SGAbcbsRuEGyDkDsIbhDtI3g3iDZBuEBvwbIA3iN83ihRJWZYkf/C/xyNJ1i1Jkf77vffet/eAgQEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI2B8QEAgI-';
 
             // 1. Create a container for PDF generation
             const pdfContainer = document.createElement('div');
@@ -2458,9 +2460,9 @@
             proposalContent.classList.add('html2pdf__page-break'); // Add page break after cover
             pdfContainer.appendChild(proposalContent);
 
-            // 4. Set options for html2pdf
+            // 4. Set options for html2pdf, adding margins for header/footer
             const opt = {
-                margin: [0, 0, 0, 0],
+                margin: [20, 15, 20, 15], // [top, left, bottom, right] in mm
                 filename: fileName,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true },
@@ -2470,46 +2472,34 @@
 
             html2pdf().from(pdfContainer).set(opt).toPdf().get('pdf').then(function (pdf) {
                 const totalPages = pdf.internal.getNumberOfPages();
-                if (totalPages > 1) {
-                    // Crie um objeto de imagem para a marca d'água
-                    const watermarkImg = new Image();
-                    watermarkImg.src = watermarkDataUrl; // Sua string base64 aqui
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
 
-                    // Aguarde a imagem carregar
-                    watermarkImg.onload = function() {
-                        const pageWidth = pdf.internal.pageSize.getWidth();
-                        const pageHeight = pdf.internal.pageSize.getHeight();
+                // Itarate over all pages (except the cover)
+                for (let i = 2; i <= totalPages; i++) {
+                    pdf.setPage(i);
 
-                        // Calcule as dimensões da marca d'água para manter a proporção
-                        const wmWidth = pageWidth / 2;
-                        const wmHeight = (watermarkImg.height * wmWidth) / watermarkImg.width;
-                        const wmX = (pageWidth - wmWidth) / 2;
-                        const wmY = (pageHeight - wmHeight) / 2;
+                    // Header
+                    pdf.setFontSize(10);
+                    pdf.setTextColor(100);
+                    pdf.text(
+                        'Proposta Comercial - MedMais Soluções Médicas',
+                        pageWidth / 2,
+                        10,
+                        { align: 'center' }
+                    );
 
-                        // Adicione a marca d'água a todas as páginas, exceto a primeira
-                        for (let i = 2; i <= totalPages; i++) {
-                            pdf.setPage(i);
-                            // Defina a opacidade para a marca d'água
-                            pdf.setGState(new pdf.GState({opacity: 0.05}));
-                            pdf.addImage(watermarkImg, 'PNG', wmX, wmY, wmWidth, wmHeight);
-                            // Restaure a opacidade para o conteúdo normal
-                            pdf.setGState(new pdf.GState({opacity: 1}));
-                        }
-
-                        // Salve o PDF após adicionar a marca d'água
-                        pdf.save(fileName);
-                    };
-
-                    // Tratamento de erro caso a imagem não carregue
-                    watermarkImg.onerror = function() {
-                        console.error("Erro ao carregar a imagem da marca d'água.");
-                        pdf.save(fileName); // Salva o PDF mesmo sem a marca d'água
-                    };
-                } else {
-                    // Se houver apenas uma página (capa), salve diretamente
-                    pdf.save(fileName);
+                    // Footer
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(100);
+                    pdf.text(
+                        `Rua Antônio Augusto, 1271. Sala 201. Edifício Medical Gênesis. Aldeota. Fortaleza-CE.`,
+                        pageWidth / 2,
+                        pageHeight - 10,
+                        { align: 'center' }
+                    );
                 }
-            }).catch(err => console.error("Erro ao gerar o PDF:", err));
+            }).save();
         }
 
         // --- CLIENTS FUNCTIONS --- 
