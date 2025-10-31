@@ -241,8 +241,7 @@
                     <input type="password" id="login-password" class="modal-input mt-1" required autocomplete="current-password">
                 </div>
                 <div id="login-message" class="text-sm text-center h-4"></div>
-                <div class="flex items-center justify-between gap-4 pt-4">
-                    <button type="button" id="btn-register" class="w-full bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Registrar</button>
+                <div class="flex items-center justify-center gap-4 pt-4">
                     <button type="submit" id="btn-login" class="w-full bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Entrar</button>
                 </div>
                 <div class="text-center mt-4">
@@ -484,6 +483,33 @@
             </div>
         </div>
 
+        <div id="accept-proposal-modal" class="modal-overlay">
+            <div class="modal-content max-w-lg">
+                <h3 class="text-xl font-bold mb-6 text-center text-green-800">Confirmar Aceite da Proposta</h3>
+                <form id="accept-proposal-form" class="space-y-4">
+                    <p class="text-sm text-gray-600">Para confirmar o aceite desta proposta, por favor, preencha os dados abaixo. Esta ação formaliza o seu acordo com os termos e valores apresentados.</p>
+                    <div>
+                        <label for="accept-fullname" class="block text-sm font-medium text-gray-700">Nome Completo do Responsável</label>
+                        <input type="text" id="accept-fullname" class="modal-input mt-1" required>
+                    </div>
+                    <div>
+                        <label for="accept-document" class="block text-sm font-medium text-gray-700">CPF ou CNPJ</label>
+                        <input type="text" id="accept-document" class="modal-input mt-1" required>
+                    </div>
+                    <div class="pt-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="accept-terms" class="h-4 w-4 text-cyan-600 border-gray-300 rounded">
+                            <span class="ml-2 text-gray-700 text-sm">Li e concordo com os termos da proposta.</span>
+                        </label>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="modal-accept-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                        <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 transition-all">Confirmar Aceite</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div id="category-modal" class="modal-overlay">
             <div class="modal-content">
                 <h3 id="category-modal-title" class="text-xl font-bold mb-6 text-center text-cyan-800">Adicionar Nova Categoria</h3>
@@ -589,7 +615,7 @@
 
                     <div class="lg:col-span-1">
                         <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 sticky top-8 space-y-6">
-                            <div class="financial-card">
+                            <div id="financial-parameters" class="financial-card">
                                 <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Parâmetros Financeiros</h2>
                                 <div class="space-y-3">
                                     <div class="flex justify-between items-center">
@@ -628,9 +654,12 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="mt-6">
+                            <div id="proposal-actions-container" class="mt-6 flex gap-2">
                                 <button id="btn-save-proposal" class="w-full bg-cyan-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-700 transition-all shadow-md">
                                     Salvar Proposta
+                                </button>
+                                <button id="btn-accept-proposal" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-all shadow-md" style="display: none;">
+                                    Aceitar Proposta
                                 </button>
                             </div>
                         </div>
@@ -774,8 +803,12 @@
         let proposalLogEntries = [];
         let serviceCategories = [];
         let unsubscribeProposals;
+        let unsubscribePublicProposals;
         let unsubscribeClients;
         let unsubscribeLogs;
+
+        let vendorProposals = [];
+        let publicProposals = [];
 
         // --- DADOS INICIAIS (FALLBACK) --- 
         const TIERS = [{
@@ -1085,8 +1118,6 @@
         const loginModal = document.getElementById('login-modal');
         const mainAppContainer = document.getElementById('main-app-container');
         const loginForm = document.getElementById('login-form');
-        const loginMessage = document.getElementById('login-message');
-        const btnRegister = document.getElementById('btn-register');
         const btnLogout = document.getElementById('btn-logout');
         const forgotPasswordLink = document.getElementById('forgot-password-link');
         const userInfoDisplay = document.getElementById('user-info-display');
@@ -1443,7 +1474,7 @@
             );
         }
 
-        function renderSavedProposals() {
+        function renderSavedProposals(proposalsToRender) {
             if (!savedProposalsContainer) return;
 
             const statusColors = {
@@ -1454,18 +1485,24 @@
                 'Recusada': 'bg-red-200 text-red-800',
             };
 
-            savedProposalsContainer.innerHTML = savedProposals.sort((a, b) => new Date(b.clientData.lastSaved) - new Date(a.clientData.lastSaved)).map(p => {
+            savedProposalsContainer.innerHTML = proposalsToRender.sort((a, b) => new Date(b.clientData.lastSaved) - new Date(a.clientData.lastSaved)).map(p => {
                 const lastSavedDate = p.clientData.lastSaved ? new Date(p.clientData.lastSaved).toLocaleString('pt-BR') : 'N/A';
                 const status = p.status || 'Criada';
                 const statusColor = statusColors[status] || 'bg-gray-200 text-gray-800';
+
+                const acceptanceHighlight = p.status === 'Aceita' && p.acceptanceData ? 'border-2 border-green-500 shadow-lg' : '';
+                const acceptanceInfo = p.status === 'Aceita' && p.acceptanceData ? `<p class="text-xs text-green-700 font-semibold mt-1">Aceita por: ${p.acceptanceData.fullName}</p>` : '';
+
+
                 return ` 
-                <div class="p-4 bg-gray-50 rounded-lg flex justify-between items-center">
+                <div class="p-4 bg-gray-50 rounded-lg flex justify-between items-center ${acceptanceHighlight}">
                     <div>
                         <div class="flex items-center gap-3">
                             <p class="font-bold text-gray-800">${p.clientData.clientName || 'Sem nome'}</p>
                             <span class="text-xs font-semibold px-2 py-1 rounded-full ${statusColor}">${status}</span>
                         </div>
                         <p class="text-sm text-gray-600">Salvo em: ${lastSavedDate}</p>
+                        ${acceptanceInfo}
                     </div>
                     <div class="flex gap-2">
                         <button class="details-proposal-btn bg-purple-100 text-purple-800 px-3 py-1 rounded" data-id="${p.id}">Acompanhar</button>
@@ -1674,37 +1711,6 @@
                 });
         });
 
-        btnRegister.addEventListener('click', () => {
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            
-            if (email.length < 6 || password.length < 6) {
-                loginMessage.textContent = 'Email e senha devem ter pelo menos 6 caracteres.';
-                loginMessage.classList.remove('text-gray-500');
-                loginMessage.classList.add('text-red-500');
-                return;
-            }
-
-            loginMessage.textContent = 'Registrando...';
-            loginMessage.classList.remove('text-red-500');
-            loginMessage.classList.add('text-gray-500');
-
-            createUserWithEmailAndPassword(auth, email, password)
-                .then((userCredential) => {
-                    console.log('Usuário registrado com sucesso:', userCredential.user);
-                    loginMessage.textContent = 'Usuário registrado! Fazendo login...';
-                })
-                .catch((error) => {
-                    console.error('Erro no registro:', error.code, error.message);
-                    if (error.code === 'auth/email-already-in-use') {
-                        loginMessage.textContent = 'Este email já está em uso.';
-                    } else {
-                        loginMessage.textContent = 'Erro ao registrar. Tente novamente.';
-                    }
-                    loginMessage.classList.remove('text-gray-500');
-                    loginMessage.classList.add('text-red-500');
-                });
-        });
 
         forgotPasswordLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1731,113 +1737,157 @@
         });
 
         btnLogout.addEventListener('click', () => {
-            signOut(auth).catch((error) => {
-                console.error('Erro ao sair:', error);
-            });
+            if (auth.currentUser && !auth.currentUser.isAnonymous) {
+                signOut(auth).catch((error) => console.error('Erro ao sair:', error));
+            } else {
+                loginModal.classList.add('visible');
+            }
         });
 
-
         onAuthStateChanged(auth, async (user) => {
+            const vendorOnlyTabs = [
+                document.querySelector('.tab-button[data-tab="clients"]'),
+                document.querySelector('.tab-button[data-tab="preview-contract"]'),
+                document.querySelector('.tab-button[data-tab="prices"]'),
+                document.querySelector('.tab-button[data-tab="saved"]')
+            ];
+            const financialParams = document.getElementById('financial-parameters');
+            const btnSaveProposal = document.getElementById('btn-save-proposal');
+            const btnAcceptProposal = document.getElementById('btn-accept-proposal');
+
             if (user && !user.isAnonymous) {
+                // --- VENDEDOR LOGADO ---
                 userId = user.uid;
                 userEmail = user.email;
                 userInfoDisplay.textContent = `Usuário: ${userEmail}`;
+
                 loginModal.classList.remove('visible');
                 mainAppContainer.classList.remove('hidden');
+
+                btnLogout.textContent = 'Sair';
+                btnLogout.className = 'w-full md:w-auto bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition-all';
+
+                vendorOnlyTabs.forEach(tab => tab && (tab.style.display = ''));
+                if (financialParams) financialParams.style.display = '';
+                document.getElementById('generator-add-client-btn').style.display = '';
+                btnSaveProposal.style.display = '';
+                btnAcceptProposal.style.display = 'none';
+
                 dbRef.proposals = collection(db, `artifacts/${appId}/users/${userId}/proposals`);
                 dbRef.clients = collection(db, `artifacts/${appId}/users/${userId}/clients`);
                 dbRef.logs = doc(db, `artifacts/${appId}/users/${userId}/userLogs/main`);
+
                 setupListeners();
+
             } else {
+                // --- CLIENTE (NÃO LOGADO) ---
                 userId = null;
                 userEmail = null;
-                mainAppContainer.classList.add('hidden');
-                loginModal.classList.add('visible');
                 userInfoDisplay.textContent = '';
-                loaderElem.style.display = 'none';
+                mainAppContainer.classList.remove('hidden');
+                loginModal.classList.remove('visible');
+
+
+                btnLogout.textContent = 'Login para Vendedores';
+                btnLogout.className = 'w-full md:w-auto bg-cyan-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-cyan-700 transition-all';
+
+                vendorOnlyTabs.forEach(tab => tab && (tab.style.display = 'none'));
+                if (financialParams) financialParams.style.display = 'none';
+                document.getElementById('generator-add-client-btn').style.display = 'none';
+                btnSaveProposal.style.display = 'none';
+                btnAcceptProposal.style.display = '';
+                document.getElementById('btn-new-proposal').style.display = 'none';
+
+                const activeTab = document.querySelector('.tab-button.active');
+                if (activeTab && activeTab.style.display === 'none') {
+                    document.querySelector('.tab-button[data-tab="generator"]').click();
+                }
+
                 if (unsubscribeProposals) unsubscribeProposals();
+                if (unsubscribePublicProposals) unsubscribePublicProposals();
                 if (unsubscribeClients) unsubscribeClients();
                 if (unsubscribeLogs) unsubscribeLogs();
+
+                dbRef.proposals = null;
+                dbRef.clients = null;
+                dbRef.logs = null;
+
+                setupListeners();
             }
         });
 
         function setupListeners() {
             let isInitialLoad = true;
-            onSnapshot(dbRef.config, async (docSnap) => {
-                const data = docSnap.exists() ? docSnap.data().priceState : initialPriceData;
-                serviceCategories = data.serviceCategories || [];
+            let configListenerAttached = false;
 
-                if (isInitialLoad) {
-                    console.log("Executando carregamento inicial...");
-                    priceState = data;
-                    popularServicos();
-                    renderPriceTable();
-                    renderServiceCategories();
-                    clearForm(true);
-                    loaderElem.style.display = 'none';
-                    isInitialLoad = false;
-                } else {
-                    console.log("Dados de configuração atualizados em segundo plano.");
-                    priceState = data;
+            if (!configListenerAttached) {
+                onSnapshot(dbRef.config, async (docSnap) => {
+                    const data = docSnap.exists() ? docSnap.data().priceState : initialPriceData;
+                    serviceCategories = data.serviceCategories || [];
 
-                    // ========================================================
-                    // INÍCIO: CORREÇÃO
-                    // ========================================================
-                    // Precisamos reconstruir TODAS as seções que dependem dos preços
-                    popularServicos();
-                    renderPriceTable();
-                    renderServiceCategories();
-                    // ========================================================
-                    // FIM: CORREÇÃO
-                    // ========================================================
-                }
-            }, (error) => {
-                console.error("Erro ao ouvir configurações:", error);
-                loaderElem.textContent = "Erro ao carregar dados de configuração.";
-            });
-
-            if (unsubscribeProposals) unsubscribeProposals();
-            unsubscribeProposals = onSnapshot(query(dbRef.proposals), (querySnapshot) => {
-                savedProposals = [];
-                querySnapshot.forEach((doc) => {
-                    savedProposals.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
+                    if (isInitialLoad) {
+                        priceState = data;
+                        popularServicos();
+                        renderPriceTable();
+                        renderServiceCategories();
+                        clearForm(true);
+                        loaderElem.style.display = 'none';
+                        isInitialLoad = false;
+                    } else {
+                        priceState = data;
+                        popularServicos();
+                        renderPriceTable();
+                        renderServiceCategories();
+                    }
+                }, (error) => {
+                    console.error("Erro ao ouvir configurações:", error);
+                    loaderElem.textContent = "Erro ao carregar dados de configuração.";
                 });
-                renderSavedProposals();
-            }, (error) => console.error("Erro ao ouvir propostas:", error));
+                configListenerAttached = true;
+            }
 
-            if (unsubscribeClients) unsubscribeClients();
-            unsubscribeClients = onSnapshot(query(dbRef.clients), (querySnapshot) => {
-                clients = [];
-                querySnapshot.forEach((doc) => {
-                    clients.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
-                renderClientsList();
-            }, (error) => console.error("Erro ao ouvir clientes:", error));
+            // Listeners que dependem de autenticação
+            if (dbRef.proposals) {
+                if (unsubscribeProposals) unsubscribeProposals();
+                unsubscribeProposals = onSnapshot(query(dbRef.proposals), (querySnapshot) => {
+                    vendorProposals = [];
+                    querySnapshot.forEach((doc) => vendorProposals.push({ id: doc.id, ...doc.data() }));
+                    savedProposals = [...vendorProposals, ...publicProposals];
+                    renderSavedProposals(savedProposals);
+                }, (error) => console.error("Erro ao ouvir propostas:", error));
 
-            if (unsubscribeLogs) unsubscribeLogs();
+                // Listener para propostas públicas
+                const publicProposalsRef = collection(db, `publicArtifacts/${appId}/proposals`);
+                if (unsubscribePublicProposals) unsubscribePublicProposals();
+                unsubscribePublicProposals = onSnapshot(query(publicProposalsRef), (querySnapshot) => {
+                    publicProposals = [];
+                    querySnapshot.forEach((doc) => publicProposals.push({ id: doc.id, ...doc.data() }));
+                    savedProposals = [...vendorProposals, ...publicProposals];
+                    renderSavedProposals(savedProposals);
+                }, (error) => console.error("Erro ao ouvir propostas públicas:", error));
+            }
+
+            if (dbRef.clients) {
+                if (unsubscribeClients) unsubscribeClients();
+                unsubscribeClients = onSnapshot(query(dbRef.clients), (querySnapshot) => {
+                    clients = [];
+                    querySnapshot.forEach((doc) => clients.push({ id: doc.id, ...doc.data() }));
+                    renderClientsList();
+                }, (error) => console.error("Erro ao ouvir clientes:", error));
+            }
+
             if (dbRef.logs) {
+                if (unsubscribeLogs) unsubscribeLogs(); // Simulação, pois logs têm 2 listeners
                 const priceLogQuery = query(collection(dbRef.logs, 'priceLog'));
                 const proposalLogQuery = query(collection(dbRef.logs, 'proposalLog'));
 
                 onSnapshot(priceLogQuery, (snapshot) => {
-                    priceLogEntries = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
+                    priceLogEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     priceLogEntries.sort((a, b) => b.timestamp - a.timestamp);
                     renderPriceLog();
                 });
                 onSnapshot(proposalLogQuery, (snapshot) => {
-                    proposalLogEntries = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
+                    proposalLogEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     proposalLogEntries.sort((a, b) => b.timestamp - a.timestamp);
                     renderProposalLog();
                 });
@@ -1847,8 +1897,14 @@
         // --- CÓDIGO RESTANTE (FUNÇÕES DO APP) --- 
 
         function createServiceCard(service, category) {
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            const isObrigatorio = service.obrigatorio;
+
             const card = document.createElement('div');
-            card.className = 'service-card p-4 border-2 border-gray-200 rounded-lg cursor-pointer';
+            card.className = 'service-card p-4 border-2 border-gray-200 rounded-lg';
+            if (!isObrigatorio || !isClientView) {
+                 card.classList.add('cursor-pointer');
+            }
             card.dataset.id = service.id;
             card.dataset.category = category;
 
@@ -1860,27 +1916,44 @@
                 extraInputs += `<select class="frequency-selector"><option value="anual" selected>Anual</option><option value="mensal">Mensal</option><option value="semanal">Semanal</option></select>`;
             }
 
+            const priceInputHTML = isClientView ? '' : '<input type="text" class="price-input" readonly>';
+
             card.innerHTML = ` 
                 <div class="flex justify-between items-start"> 
                     <div><h4 class="font-bold text-gray-800">${service.nome}</h4><p class="text-sm text-gray-500">${service.obs || ''}</p></div> 
                     <span class="text-2xl text-gray-300">&#9675;</span> 
                 </div> 
                 <div class="text-right font-semibold text-cyan-700 mt-2 flex items-center justify-end gap-2 flex-wrap"> 
-                    ${extraInputs}<input type="text" class="price-input" readonly> 
+                    ${extraInputs}${priceInputHTML}
                     <span class="total-price-display text-gray-800 font-bold w-full text-right"></span> 
                 </div>`;
+
             const priceInput = card.querySelector('.price-input');
-            priceInput.addEventListener('change', runAllUpdates);
-            card.addEventListener('click', (e) => {
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+            if(priceInput) {
+                priceInput.addEventListener('change', runAllUpdates);
+            }
+
+            const toggleSelection = () => {
                 card.classList.toggle('selected');
-                priceInput.readOnly = !card.classList.contains('selected');
+                if (priceInput) priceInput.readOnly = !card.classList.contains('selected');
                 const circle = card.querySelector('.text-2xl');
                 circle.innerHTML = card.classList.contains('selected') ? '&#9711;' : '&#9675;';
                 circle.classList.toggle('text-gray-300');
                 circle.classList.toggle('text-cyan-600');
                 runAllUpdates();
-            });
+            };
+
+            if (!isObrigatorio || !isClientView) {
+                card.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+                    toggleSelection();
+                });
+            }
+
+            if(isClientView && isObrigatorio){
+                toggleSelection();
+            }
+
             card.querySelectorAll('.quantity-input, .frequency-selector').forEach(input => {
                 input.addEventListener('change', runAllUpdates);
                 input.addEventListener('click', (e) => e.stopPropagation());
@@ -2309,7 +2382,7 @@
                 const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1);
                 let tableHtml = `<h3 class="text-lg font-semibold text-cyan-900">${categoryTitle.replace(/([A-Z])/g, ' $1').trim()}</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="bg-gray-100"><th class="p-2 text-left">Serviço</th>`;
                 TIERS.forEach(tier => tableHtml += `<th class="p-2">${tier.label}</th>`);
-                tableHtml += `<th class="p-2 text-center">Ações</th></tr></thead><tbody>`;
+                tableHtml += `<th class="p-2 text-center">Obrigatório</th><th class="p-2 text-center">Ações</th></tr></thead><tbody>`;
 
                 const services = priceState[category];
                 if (Array.isArray(services)) {
@@ -2323,7 +2396,11 @@
                         } else {
                             tableHtml += `<td class="p-1" colspan="${TIERS.length}"><input type="number" step="0.01" class="table-price-input w-32" value="${service.preco}" data-category="${category}" data-service-index="${serviceIndex}"></td>`;
                         }
-                        tableHtml += ` 
+                        const isObrigatorio = service.obrigatorio ? 'checked' : '';
+                        tableHtml += `
+                                <td class="p-2 text-center">
+                                    <input type="checkbox" class="obrigatorio-checkbox" ${isObrigatorio} data-category="${category}" data-id="${service.id}">
+                                </td>
                                 <td class="p-2 text-center whitespace-nowrap"> 
                                     <button class="edit-service-btn text-blue-500 hover:text-blue-700 p-1" title="Editar Serviço" data-id="${service.id}" data-category="${category}">✏️</button> 
                                     <button class="delete-service-btn text-red-500 hover:text-red-700 p-1" title="Excluir Serviço" data-id="${service.id}" data-category="${category}">🗑️</button> 
@@ -2353,6 +2430,28 @@
             });
             container.querySelectorAll('.delete-service-btn').forEach(button => {
                 button.addEventListener('click', handleDeleteServiceClick);
+            });
+
+            container.querySelectorAll('.obrigatorio-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', async (e) => {
+                    const { category, id } = e.target.dataset;
+                    const isChecked = e.target.checked;
+
+                    const newPriceState = JSON.parse(JSON.stringify(priceState));
+                    const service = newPriceState[category].find(s => s.id === id);
+
+                    if (service) {
+                        service.obrigatorio = isChecked;
+                        try {
+                            await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                            toast.show('Status de serviço obrigatório atualizado.');
+                        } catch (error) {
+                            console.error("Erro ao atualizar status de serviço obrigatório:", error);
+                            toast.show("Falha ao salvar a alteração.");
+                            e.target.checked = !isChecked; // Reverte a mudança visual em caso de erro
+                        }
+                    }
+                });
             });
         }
 
@@ -2718,7 +2817,90 @@
             editServiceTypeSelectDiv.style.display = e.target.value === 'faixa' ? 'none' : 'block';
         });
 
+        async function handleAcceptProposal() {
+            const fullname = document.getElementById('accept-fullname').value;
+            const doc = document.getElementById('accept-document').value;
+            const terms = document.getElementById('accept-terms').checked;
+
+            if (!fullname || !doc || !terms) {
+                toast.show("Por favor, preencha todos os campos e aceite os termos.");
+                return;
+            }
+
+            // Usar uma implementação simplificada de saveProposal para o cliente
+            const proposalData = getFormData();
+            if (!proposalData.clientData.clientName) {
+                toast.show('Os dados da empresa são obrigatórios.');
+                return;
+            }
+
+            // Para o cliente, o ID do cliente e da proposta serão gerados agora
+            const clientId = doc(collection(db, 'dummy')).id;
+            const proposalId = doc(collection(db, 'dummy')).id;
+
+            proposalData.clientData.id = clientId;
+            proposalData.clientData.proposalId = proposalId;
+            proposalData.status = "Aceita";
+            proposalData.history = [{
+                status: "Aceita",
+                timestamp: new Date().toISOString(),
+                observation: `Proposta aceita online por ${fullname} (Documento: ${doc}).`
+            }];
+            proposalData.acceptanceData = {
+                fullName: fullname,
+                document: doc,
+                acceptedAt: new Date().toISOString()
+            };
+
+            const clientToSave = {
+                id: clientId,
+                name: proposalData.clientData.clientName,
+                cnpj: proposalData.clientData.clientCnpj,
+                address: proposalData.clientData.clientAddress,
+                contactPerson: proposalData.clientData.clientContactPerson,
+                contactRole: proposalData.clientData.clientContactRole,
+                email: proposalData.clientData.clientEmail,
+                phone: proposalData.clientData.clientPhone
+            };
+
+            // Simular a referência de DB para salvar como anônimo/público
+            const publicProposalRef = doc(db, `publicArtifacts/${appId}/proposals`, proposalId);
+            const publicClientRef = doc(db, `publicArtifacts/${appId}/clients`, clientId);
+
+            try {
+                const batch = writeBatch(db);
+                batch.set(publicClientRef, clientToSave);
+                batch.set(publicProposalRef, proposalData);
+                await batch.commit();
+
+                document.getElementById('accept-proposal-modal').classList.remove('visible');
+                toast.show('Proposta aceita com sucesso! Nossa equipe entrará em contato.');
+
+                const subject = `Nova Proposta Aceita - ${proposalData.clientData.clientName}`;
+                const body = `Uma nova proposta foi aceita online.\n\nCliente: ${proposalData.clientData.clientName}\nContato: ${proposalData.clientData.clientContactPerson}\nEmail: ${proposalData.clientData.clientEmail}\nTelefone: ${proposalData.clientData.clientPhone}\n\nAceita por: ${fullname} (${doc})\n\nVerifique o painel para mais detalhes.`;
+                window.location.href = `mailto:contato@medmais.med.br,vinicius@medmais.med.br?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+                document.getElementById('btn-accept-proposal').disabled = true;
+                document.getElementById('btn-accept-proposal').textContent = 'Proposta Aceita';
+
+            } catch (error) {
+                console.error("Erro ao aceitar proposta: ", error);
+                toast.show('Erro ao processar o aceite da proposta.');
+            }
+        }
+
+
         document.getElementById('btn-save-proposal').addEventListener('click', saveProposal);
+        document.getElementById('btn-accept-proposal').addEventListener('click', () => {
+             document.getElementById('accept-proposal-modal').classList.add('visible');
+        });
+        document.getElementById('modal-accept-cancel-btn').addEventListener('click', () => {
+            document.getElementById('accept-proposal-modal').classList.remove('visible');
+        });
+        document.getElementById('accept-proposal-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleAcceptProposal();
+        });
         document.getElementById('btn-new-proposal').addEventListener('click', () => clearForm(true));
         document.getElementById('add-palestra').addEventListener('click', () => {
             const vidas = parseInt(formElements.numVidas.value) || 0;
