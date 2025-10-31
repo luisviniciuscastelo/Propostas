@@ -2329,6 +2329,9 @@
                 anual: [],
                 avulsos: []
             };
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            const vidas = parseInt(formElements.numVidas.value) || 0;
+
             document.querySelectorAll('.service-card.selected').forEach(card => {
                 const {
                     id,
@@ -2339,7 +2342,18 @@
 
                 const service = serviceList.find(s => s.id === id);
                 if (service) {
-                    const price = parseCurrency(card.querySelector('.price-input').value);
+                    let price;
+                    if(isClientView){
+                        price = service.preco ?? getPriceFromState(vidas, service.precos);
+                        if (service.isDynamic) {
+                           const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
+                           const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
+                           price = (pgrPrice + pcmsoPrice) * service.multiplier;
+                        }
+                    } else {
+                        price = parseCurrency(card.querySelector('.price-input').value);
+                    }
+
                     const quantity = parseInt(card.querySelector('.quantity-input') ?.value || 1);
                     const frequency = card.querySelector('.frequency-selector') ?.value || 'anual';
                     services[category].push({ ...service,
