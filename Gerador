@@ -223,6 +223,19 @@
                 display: none;
             }
         }
+        .q-btn {
+            padding: 8px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background-color: #f8fafc;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .q-btn.active {
+            background-color: #0891b2;
+            color: white;
+            border-color: #0891b2;
+        }
     </style>
 </head>
 
@@ -334,6 +347,97 @@
                         <button type="submit" class="bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Salvar</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <div id="questionnaire-modal" class="modal-overlay">
+            <div class="modal-content max-w-3xl">
+                <h3 class="text-xl font-bold mb-6 text-center text-cyan-800">Questionário Pré-Proposta</h3>
+                <p class="text-sm text-gray-600 mb-6">Para entendermos melhor suas necessidades, por favor, responda às perguntas abaixo. Isso nos ajudará a criar uma proposta mais alinhada à sua realidade.</p>
+                <form id="questionnaire-form" class="space-y-6 max-h-[60vh] overflow-y-auto pr-4">
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">1) Descreva de uma forma geral as atividades da empresa</label>
+                        <textarea id="q-activities" rows="3" class="modal-input mt-1"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">2) Possui quantas sedes?</label>
+                        <input type="number" id="q-locations" class="modal-input mt-1 w-32" min="1" value="1">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">3) Dispõe de algum dos documentos abaixo:</label>
+                        <div id="q-documents" class="mt-2 space-y-2 text-sm">
+                            <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> PCMSO</label>
+                            <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> PGR</label>
+                            <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> LTCAT</label>
+                            <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> ASOs atualizados</label>
+                            <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Programa de Conservação Auditiva</label>
+                            <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Laudo de Periculosidade</label>
+                            <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Laudo de Insalubridade</label>
+                            <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Análise Ergonômica</label>
+                        </div>
+                    </div>
+
+                    <div class="question-group">
+                        <label class="block text-sm font-medium text-gray-700">4) Possui CIPA constituída?</label>
+                        <div class="flex gap-4 mt-1"><button type="button" data-group="cipa" class="q-btn">Sim</button><button type="button" data-group="cipa" class="q-btn active">Não</button></div>
+                        <input type="hidden" id="q-cipa" value="Não">
+                    </div>
+
+                    <div class="question-group">
+                        <label class="block text-sm font-medium text-gray-700">5) Tem atividades envolvidas com máquinas e equipamentos?</label>
+                        <div class="flex gap-4 mt-1"><button type="button" data-group="machines" class="q-btn">Sim</button><button type="button" data-group="machines" class="q-btn active">Não</button></div>
+                        <input type="hidden" id="q-machines" value="Não">
+                    </div>
+
+                    <div class="question-group">
+                        <label class="block text-sm font-medium text-gray-700">6) Há trabalhadores que executam trabalho em altura e/ou espaço confinado?</label>
+                        <div class="flex gap-4 mt-1"><button type="button" data-group="confined" class="q-btn">Sim</button><button type="button" data-group="confined" class="q-btn active">Não</button></div>
+                        <input type="hidden" id="q-confined" value="Não">
+                    </div>
+
+                    <div class="question-group">
+                        <label class="block text-sm font-medium text-gray-700">7) Há trabalhadores expostos a ruído excessivo?</label>
+                        <div class="flex gap-4 mt-1"><button type="button" data-group="noise" class="q-btn">Sim</button><button type="button" data-group="noise" class="q-btn active">Não</button></div>
+                        <input type="hidden" id="q-noise" value="Não">
+                    </div>
+
+                    <div class="question-group">
+                        <label class="block text-sm font-medium text-gray-700">8) Há trabalhadores expostos ao calor?</label>
+                        <div class="flex gap-4 mt-1"><button type="button" data-group="heat" class="q-btn">Sim</button><button type="button" data-group="heat" class="q-btn active">Não</button></div>
+                        <input type="hidden" id="q-heat" value="Não">
+                    </div>
+
+                    <div class="question-group">
+                        <label class="block text-sm font-medium text-gray-700">9) Há trabalhos que envolvam algum manuseio de eletricidade, material explosivo, combustível ou serviços de transporte com uso de motocicleta?</label>
+                        <div class="flex gap-4 mt-1"><button type="button" data-group="danger" class="q-btn">Sim</button><button type="button" data-group="danger" class="q-btn active">Não</button></div>
+                        <input type="hidden" id="q-danger" value="Não">
+                    </div>
+
+                    <div class="question-group">
+                        <label class="block text-sm font-medium text-gray-700">10) Realiza algum trabalho que envolva utilização, manipulação ou transporte de material radioativo?</label>
+                        <div class="flex gap-4 mt-1"><button type="button" data-group="radioactive" class="q-btn">Sim</button><button type="button" data-group="radioactive" class="q-btn active">Não</button></div>
+                        <input type="hidden" id="q-radioactive" value="Não">
+                    </div>
+
+                    <div class="question-group">
+                        <label class="block text-sm font-medium text-gray-700">11) Área construída da empresa é acima de 750 metros quadrados ou tem 02 ou mais pavimentos?</label>
+                        <div class="flex gap-4 mt-1"><button type="button" data-group="area" class="q-btn">Sim</button><button type="button" data-group="area" class="q-btn active">Não</button></div>
+                        <input type="hidden" id="q-area" value="Não">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">12) Outras informações que julgar necessário:</label>
+                        <textarea id="q-other" rows="3" class="modal-input mt-1"></textarea>
+                    </div>
+
+                </form>
+                <div class="flex justify-end gap-4 pt-6 border-t mt-6">
+                    <button type="button" id="modal-questionnaire-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                    <button type="submit" form="questionnaire-form" class="bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Enviar Solicitação</button>
+                </div>
             </div>
         </div>
 
@@ -658,8 +762,8 @@
                                 <button id="btn-save-proposal" class="w-full bg-cyan-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-700 transition-all shadow-md">
                                     Salvar Proposta
                                 </button>
-                                <button id="btn-accept-proposal" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-all shadow-md" style="display: none;">
-                                    Aceitar Proposta
+                                <button id="btn-generate-proposal" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-all shadow-md" style="display: none;">
+                                    Gerar Proposta
                                 </button>
                             </div>
                         </div>
@@ -1490,6 +1594,7 @@
                 'Em Negociação': 'bg-yellow-200 text-yellow-800',
                 'Aceita': 'bg-green-200 text-green-800',
                 'Recusada': 'bg-red-200 text-red-800',
+                'Solicitada pelo Cliente': 'bg-purple-200 text-purple-800',
             };
 
             savedProposalsContainer.innerHTML = proposalsToRender.sort((a, b) => new Date(b.clientData.lastSaved) - new Date(a.clientData.lastSaved)).map(p => {
@@ -1756,12 +1861,14 @@
                 document.querySelector('.tab-button[data-tab="clients"]'),
                 document.querySelector('.tab-button[data-tab="preview-contract"]'),
                 document.querySelector('.tab-button[data-tab="prices"]'),
-                document.querySelector('.tab-button[data-tab="saved"]')
+                document.querySelector('.tab-button[data-tab="saved"]'),
+                document.querySelector('.tab-button[data-tab="preview-proposal"]')
             ];
             const financialParams = document.getElementById('financial-parameters');
             const btnSaveProposal = document.getElementById('btn-save-proposal');
-            const btnAcceptProposal = document.getElementById('btn-accept-proposal');
+            const btnGenerateProposal = document.getElementById('btn-generate-proposal');
             const resumoInterno = document.getElementById('resumo-interno');
+            const summaryBox = resumoInterno.parentElement;
             const addPalestraBtn = document.getElementById('add-palestra');
             const addOutroBtn = document.getElementById('add-outro');
 
@@ -1779,13 +1886,13 @@
 
                 vendorOnlyTabs.forEach(tab => tab && (tab.style.display = ''));
                 if (financialParams) financialParams.style.display = '';
-                if (resumoInterno) resumoInterno.style.display = '';
+                if (summaryBox) summaryBox.style.display = '';
                 if (addPalestraBtn) addPalestraBtn.style.display = '';
                 if (addOutroBtn) addOutroBtn.style.display = '';
 
                 document.getElementById('generator-add-client-btn').style.display = '';
                 btnSaveProposal.style.display = '';
-                btnAcceptProposal.style.display = 'none';
+                btnGenerateProposal.style.display = 'none';
 
                 // Make client fields readonly for vendor view
                 const clientFields = [formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
@@ -1818,12 +1925,14 @@
 
                 vendorOnlyTabs.forEach(tab => tab && (tab.style.display = 'none'));
                 if (financialParams) financialParams.style.display = 'none';
-                if (resumoInterno) resumoInterno.style.display = 'none';
+                if (summaryBox) summaryBox.style.display = 'none';
                 if (addPalestraBtn) addPalestraBtn.style.display = 'none';
                 if (addOutroBtn) addOutroBtn.style.display = 'none';
                 document.getElementById('generator-add-client-btn').style.display = 'none';
                 btnSaveProposal.style.display = 'none';
-                btnAcceptProposal.style.display = '';
+                btnGenerateProposal.textContent = 'Gerar Proposta';
+                btnGenerateProposal.className = 'w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-all shadow-md';
+                btnGenerateProposal.style.display = '';
                 document.getElementById('btn-new-proposal').style.display = 'none';
 
                 // Make client fields editable for client view
@@ -2919,40 +3028,43 @@
             editServiceTypeSelectDiv.style.display = e.target.value === 'faixa' ? 'none' : 'block';
         });
 
-        async function handleAcceptProposal() {
-            const fullname = document.getElementById('accept-fullname').value;
-            const doc = document.getElementById('accept-document').value;
-            const terms = document.getElementById('accept-terms').checked;
+        async function handleQuestionnaireSubmit() {
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            if (!isClientView) return;
 
-            if (!fullname || !doc || !terms) {
-                toast.show("Por favor, preencha todos os campos e aceite os termos.");
-                return;
-            }
-
-            // Usar uma implementação simplificada de saveProposal para o cliente
             const proposalData = getFormData();
-            if (!proposalData.clientData.clientName) {
-                toast.show('Os dados da empresa são obrigatórios.');
+            if (!proposalData.clientData.clientName || !proposalData.clientData.clientEmail) {
+                toast.show('Por favor, preencha pelo menos o nome da empresa e o e-mail.');
                 return;
             }
 
-            // Para o cliente, o ID do cliente e da proposta serão gerados agora
+            const questionnaireAnswers = {
+                activities: document.getElementById('q-activities').value,
+                locations: document.getElementById('q-locations').value,
+                documents: Array.from(document.querySelectorAll('#q-documents input:checked')).map(cb => cb.parentElement.textContent.trim()),
+                cipa: document.getElementById('q-cipa').value,
+                machines: document.getElementById('q-machines').value,
+                confined: document.getElementById('q-confined').value,
+                noise: document.getElementById('q-noise').value,
+                heat: document.getElementById('q-heat').value,
+                danger: document.getElementById('q-danger').value,
+                radioactive: document.getElementById('q-radioactive').value,
+                area: document.getElementById('q-area').value,
+                other: document.getElementById('q-other').value,
+            };
+
             const clientId = doc(collection(db, 'dummy')).id;
             const proposalId = doc(collection(db, 'dummy')).id;
 
             proposalData.clientData.id = clientId;
             proposalData.clientData.proposalId = proposalId;
-            proposalData.status = "Aceita";
+            proposalData.status = "Solicitada pelo Cliente";
+            proposalData.questionnaireAnswers = questionnaireAnswers;
             proposalData.history = [{
-                status: "Aceita",
+                status: "Solicitada pelo Cliente",
                 timestamp: new Date().toISOString(),
-                observation: `Proposta aceita online por ${fullname} (Documento: ${doc}).`
+                observation: "Proposta solicitada via formulário online."
             }];
-            proposalData.acceptanceData = {
-                fullName: fullname,
-                document: doc,
-                acceptedAt: new Date().toISOString()
-            };
 
             const clientToSave = {
                 id: clientId,
@@ -2965,7 +3077,6 @@
                 phone: proposalData.clientData.clientPhone
             };
 
-            // Simular a referência de DB para salvar como anônimo/público
             const publicProposalRef = doc(db, `publicArtifacts/${appId}/proposals`, proposalId);
             const publicClientRef = doc(db, `publicArtifacts/${appId}/clients`, clientId);
 
@@ -2975,33 +3086,65 @@
                 batch.set(publicProposalRef, proposalData);
                 await batch.commit();
 
-                document.getElementById('accept-proposal-modal').classList.remove('visible');
-                toast.show('Proposta aceita com sucesso! Nossa equipe entrará em contato.');
+                document.getElementById('questionnaire-modal').classList.remove('visible');
+                toast.show('Solicitação de proposta enviada com sucesso! Nossa equipe entrará em contato.');
 
-                const subject = `Nova Proposta Aceita - ${proposalData.clientData.clientName}`;
-                const body = `Uma nova proposta foi aceita online.\n\nCliente: ${proposalData.clientData.clientName}\nContato: ${proposalData.clientData.clientContactPerson}\nEmail: ${proposalData.clientData.clientEmail}\nTelefone: ${proposalData.clientData.clientPhone}\n\nAceita por: ${fullname} (${doc})\n\nVerifique o painel para mais detalhes.`;
-                window.location.href = `mailto:contato@medmais.med.br,vinicius@medmais.med.br?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                const subject = `Nova Solicitação de Proposta - ${proposalData.clientData.clientName}`;
+                let body = `Uma nova proposta foi solicitada online.\n\n`;
+                body += `--- DADOS DO CLIENTE ---\n`;
+                body += `Empresa: ${proposalData.clientData.clientName}\n`;
+                body += `CNPJ: ${proposalData.clientData.clientCnpj || 'Não informado'}\n`;
+                body += `Contato: ${proposalData.clientData.clientContactPerson || 'Não informado'}\n`;
+                body += `Email: ${proposalData.clientData.clientEmail}\n`;
+                body += `Telefone: ${proposalData.clientData.clientPhone || 'Não informado'}\n\n`;
+                body += `--- RESPOSTAS DO QUESTIONÁRIO ---\n`;
+                body += `1) Atividades: ${questionnaireAnswers.activities}\n`;
+                body += `2) Sedes: ${questionnaireAnswers.locations}\n`;
+                body += `3) Documentos: ${questionnaireAnswers.documents.join(', ') || 'Nenhum'}\n`;
+                body += `4) CIPA: ${questionnaireAnswers.cipa}\n`;
+                body += `5) Máquinas: ${questionnaireAnswers.machines}\n`;
+                body += `6) Altura/Confinado: ${questionnaireAnswers.confined}\n`;
+                body += `7) Ruído: ${questionnaireAnswers.noise}\n`;
+                body += `8) Calor: ${questionnaireAnswers.heat}\n`;
+                body += `9) Periculosidade: ${questionnaireAnswers.danger}\n`;
+                body += `10) Material Radioativo: ${questionnaireAnswers.radioactive}\n`;
+                body += `11) Área Construída: ${questionnaireAnswers.area}\n`;
+                body += `12) Outras Informações: ${questionnaireAnswers.other}\n\n`;
+                body += `Verifique o painel para mais detalhes e para carregar a seleção de serviços do cliente.`;
+
+                window.location.href = `mailto:carla@medmais.med.br,contato@medmais.med.br?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
                 document.getElementById('btn-accept-proposal').disabled = true;
-                document.getElementById('btn-accept-proposal').textContent = 'Proposta Aceita';
+                document.getElementById('btn-accept-proposal').textContent = 'Solicitação Enviada';
 
             } catch (error) {
-                console.error("Erro ao aceitar proposta: ", error);
-                toast.show('Erro ao processar o aceite da proposta.');
+                console.error("Erro ao enviar solicitação: ", error);
+                toast.show('Erro ao processar a solicitação.');
             }
         }
 
 
         document.getElementById('btn-save-proposal').addEventListener('click', saveProposal);
-        document.getElementById('btn-accept-proposal').addEventListener('click', () => {
-             document.getElementById('accept-proposal-modal').classList.add('visible');
+        document.getElementById('btn-generate-proposal').addEventListener('click', () => {
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            if (isClientView) {
+                document.getElementById('questionnaire-modal').classList.add('visible');
+            }
         });
-        document.getElementById('modal-accept-cancel-btn').addEventListener('click', () => {
-            document.getElementById('accept-proposal-modal').classList.remove('visible');
+        document.getElementById('modal-questionnaire-cancel-btn').addEventListener('click', () => {
+            document.getElementById('questionnaire-modal').classList.remove('visible');
         });
-        document.getElementById('accept-proposal-form').addEventListener('submit', (e) => {
+        document.getElementById('questionnaire-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            handleAcceptProposal();
+            handleQuestionnaireSubmit();
+        });
+        document.querySelectorAll('.q-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const group = btn.dataset.group;
+                document.querySelectorAll(`.q-btn[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(`q-${group}`).value = btn.textContent;
+            });
         });
         document.getElementById('btn-new-proposal').addEventListener('click', () => clearForm(true));
         document.getElementById('add-palestra').addEventListener('click', () => {
