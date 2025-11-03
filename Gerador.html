@@ -1872,8 +1872,15 @@
             const addPalestraBtn = document.getElementById('add-palestra');
             const addOutroBtn = document.getElementById('add-outro');
 
+            // Detach all auth-dependent listeners on any auth state change
+            if (unsubscribeProposals) unsubscribeProposals();
+            if (unsubscribePublicProposals) unsubscribePublicProposals();
+            if (unsubscribeClients) unsubscribeClients();
+            if (unsubscribeLogs) unsubscribeLogs();
+
             if (user && !user.isAnonymous) {
                 // --- VENDEDOR LOGADO ---
+                clearForm(true); // Limpa o formulário para evitar dados de sessão de cliente
                 userId = user.uid;
                 userEmail = user.email;
                 userInfoDisplay.textContent = `Usuário: ${userEmail}`;
@@ -1894,7 +1901,6 @@
                 btnSaveProposal.style.display = '';
                 btnGenerateProposal.style.display = 'none';
 
-                // Make client fields readonly for vendor view
                 const clientFields = [formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
                 clientFields.forEach(field => {
                     if (field) {
@@ -1904,12 +1910,42 @@
                 });
                 clientNameInput.addEventListener('input', handleClientSearch);
 
+                // Attach listeners for vendor
+                const privateProposalsRef = collection(db, `artifacts/${appId}/users/${user.uid}/proposals`);
+                unsubscribeProposals = onSnapshot(query(privateProposalsRef), (snap) => {
+                    vendorProposals = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    savedProposals = [...vendorProposals, ...publicProposals];
+                    renderSavedProposals(savedProposals);
+                });
 
-                dbRef.proposals = collection(db, `artifacts/${appId}/users/${userId}/proposals`);
-                dbRef.clients = collection(db, `artifacts/${appId}/users/${userId}/clients`);
-                dbRef.logs = doc(db, `artifacts/${appId}/users/${userId}/userLogs/main`);
+                const publicProposalsRef = collection(db, `publicArtifacts/${appId}/proposals`);
+                unsubscribePublicProposals = onSnapshot(query(publicProposalsRef), (snap) => {
+                    publicProposals = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    savedProposals = [...vendorProposals, ...publicProposals];
+                    renderSavedProposals(savedProposals);
+                }, (error) => console.error("Erro ao ouvir propostas públicas:", error));
 
-                setupListeners();
+                const clientsRef = collection(db, `artifacts/${appId}/users/${user.uid}/clients`);
+                 unsubscribeClients = onSnapshot(query(clientsRef), (querySnapshot) => {
+                    clients = [];
+                    querySnapshot.forEach((doc) => clients.push({ id: doc.id, ...doc.data() }));
+                    renderClientsList();
+                }, (error) => console.error("Erro ao ouvir clientes:", error));
+
+                const logsRef = doc(db, `artifacts/${appId}/users/${user.uid}/userLogs/main`);
+                const priceLogQuery = query(collection(logsRef, 'priceLog'));
+                const proposalLogQuery = query(collection(logsRef, 'proposalLog'));
+                onSnapshot(priceLogQuery, (snapshot) => {
+                    priceLogEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    priceLogEntries.sort((a, b) => b.timestamp - a.timestamp);
+                    renderPriceLog();
+                });
+                onSnapshot(proposalLogQuery, (snapshot) => {
+                    proposalLogEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    proposalLogEntries.sort((a, b) => b.timestamp - a.timestamp);
+                    renderProposalLog();
+                });
+
 
             } else {
                 // --- CLIENTE (NÃO LOGADO) ---
@@ -1935,7 +1971,6 @@
                 btnGenerateProposal.style.display = '';
                 document.getElementById('btn-new-proposal').style.display = 'none';
 
-                // Make client fields editable for client view
                 const clientFields = [formElements.clientName, formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
                 clientFields.forEach(field => {
                     if (field) {
@@ -1949,17 +1984,6 @@
                 if (activeTab && activeTab.style.display === 'none') {
                     document.querySelector('.tab-button[data-tab="generator"]').click();
                 }
-
-                if (unsubscribeProposals) unsubscribeProposals();
-                if (unsubscribePublicProposals) unsubscribePublicProposals();
-                if (unsubscribeClients) unsubscribeClients();
-                if (unsubscribeLogs) unsubscribeLogs();
-
-                dbRef.proposals = null;
-                dbRef.clients = null;
-                dbRef.logs = null;
-
-                setupListeners();
             }
         });
 
@@ -2020,53 +2044,6 @@
                     }
                 });
                 configListenerAttached = true;
-            }
-
-            // Listeners que dependem de autenticação
-            if (dbRef.proposals) {
-                if (unsubscribeProposals) unsubscribeProposals();
-                unsubscribeProposals = onSnapshot(query(dbRef.proposals), (querySnapshot) => {
-                    vendorProposals = [];
-                    querySnapshot.forEach((doc) => vendorProposals.push({ id: doc.id, ...doc.data() }));
-                    savedProposals = [...vendorProposals, ...publicProposals];
-                    renderSavedProposals(savedProposals);
-                }, (error) => console.error("Erro ao ouvir propostas:", error));
-
-                // Listener para propostas públicas
-                const publicProposalsRef = collection(db, `publicArtifacts/${appId}/proposals`);
-                if (unsubscribePublicProposals) unsubscribePublicProposals();
-                unsubscribePublicProposals = onSnapshot(query(publicProposalsRef), (querySnapshot) => {
-                    publicProposals = [];
-                    querySnapshot.forEach((doc) => publicProposals.push({ id: doc.id, ...doc.data() }));
-                    savedProposals = [...vendorProposals, ...publicProposals];
-                    renderSavedProposals(savedProposals);
-                }, (error) => console.error("Erro ao ouvir propostas públicas:", error));
-            }
-
-            if (dbRef.clients) {
-                if (unsubscribeClients) unsubscribeClients();
-                unsubscribeClients = onSnapshot(query(dbRef.clients), (querySnapshot) => {
-                    clients = [];
-                    querySnapshot.forEach((doc) => clients.push({ id: doc.id, ...doc.data() }));
-                    renderClientsList();
-                }, (error) => console.error("Erro ao ouvir clientes:", error));
-            }
-
-            if (dbRef.logs) {
-                if (unsubscribeLogs) unsubscribeLogs(); // Simulação, pois logs têm 2 listeners
-                const priceLogQuery = query(collection(dbRef.logs, 'priceLog'));
-                const proposalLogQuery = query(collection(dbRef.logs, 'proposalLog'));
-
-                onSnapshot(priceLogQuery, (snapshot) => {
-                    priceLogEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    priceLogEntries.sort((a, b) => b.timestamp - a.timestamp);
-                    renderPriceLog();
-                });
-                onSnapshot(proposalLogQuery, (snapshot) => {
-                    proposalLogEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    proposalLogEntries.sort((a, b) => b.timestamp - a.timestamp);
-                    renderProposalLog();
-                });
             }
         }
 
@@ -3090,43 +3067,63 @@
 
             const publicProposalRef = doc(db, `publicArtifacts/${appId}/proposals`, proposalId);
             const publicClientRef = doc(db, `publicArtifacts/${appId}/clients`, clientId);
+            const mailQueueRef = collection(db, 'mail_queue');
 
             try {
+
+                const subject = `Nova Solicitação de Proposta - ${proposalData.clientData.clientName}`;
+                let htmlBody = `
+                    <p>Uma nova proposta foi solicitada online.</p>
+                    <h3>Dados do Cliente</h3>
+                    <ul>
+                        <li><strong>Empresa:</strong> ${proposalData.clientData.clientName}</li>
+                        <li><strong>CNPJ:</strong> ${proposalData.clientData.clientCnpj || 'Não informado'}</li>
+                        <li><strong>Contato:</strong> ${proposalData.clientData.clientContactPerson || 'Não informado'}</li>
+                        <li><strong>Email:</strong> ${proposalData.clientData.clientEmail}</li>
+                        <li><strong>Telefone:</strong> ${proposalData.clientData.clientPhone || 'Não informado'}</li>
+                    </ul>
+                    <h3>Respostas do Questionário</h3>
+                    <ul>
+                        <li><strong>1) Atividades:</strong> ${questionnaireAnswers.activities}</li>
+                        <li><strong>2) Sedes:</strong> ${questionnaireAnswers.locations}</li>
+                        <li><strong>3) Documentos:</strong> ${questionnaireAnswers.documents.join(', ') || 'Nenhum'}</li>
+                        <li><strong>4) CIPA:</strong> ${questionnaireAnswers.cipa}</li>
+                        <li><strong>5) Máquinas:</strong> ${questionnaireAnswers.machines}</li>
+                        <li><strong>6) Altura/Confinado:</strong> ${questionnaireAnswers.confined}</li>
+                        <li><strong>7) Ruído:</strong> ${questionnaireAnswers.noise}</li>
+                        <li><strong>8) Calor:</strong> ${questionnaireAnswers.heat}</li>
+                        <li><strong>9) Periculosidade:</strong> ${questionnaireAnswers.danger}</li>
+                        <li><strong>10) Material Radioativo:</strong> ${questionnaireAnswers.radioactive}</li>
+                        <li><strong>11) Área Construída:</strong> ${questionnaireAnswers.area}</li>
+                        <li><strong>12) Outras Informações:</strong> ${questionnaireAnswers.other}</li>
+                    </ul>
+                    <p>Verifique o painel para mais detalhes e para carregar a seleção de serviços do cliente.</p>
+                `;
+
+                const mailDoc = {
+                    to: ['carla@medmais.med.br', 'contato@medmais.med.br'],
+                    message: {
+                        subject: subject,
+                        html: htmlBody,
+                    }
+                };
+
                 const batch = writeBatch(db);
                 batch.set(publicClientRef, clientToSave);
                 batch.set(publicProposalRef, proposalData);
+                batch.set(doc(mailQueueRef), mailDoc); // Adiciona o e-mail à fila
+
                 await batch.commit();
 
                 document.getElementById('questionnaire-modal').classList.remove('visible');
                 toast.show('Solicitação de proposta enviada com sucesso! Nossa equipe entrará em contato.');
 
-                const subject = `Nova Solicitação de Proposta - ${proposalData.clientData.clientName}`;
-                let body = `Uma nova proposta foi solicitada online.\n\n`;
-                body += `--- DADOS DO CLIENTE ---\n`;
-                body += `Empresa: ${proposalData.clientData.clientName}\n`;
-                body += `CNPJ: ${proposalData.clientData.clientCnpj || 'Não informado'}\n`;
-                body += `Contato: ${proposalData.clientData.clientContactPerson || 'Não informado'}\n`;
-                body += `Email: ${proposalData.clientData.clientEmail}\n`;
-                body += `Telefone: ${proposalData.clientData.clientPhone || 'Não informado'}\n\n`;
-                body += `--- RESPOSTAS DO QUESTIONÁRIO ---\n`;
-                body += `1) Atividades: ${questionnaireAnswers.activities}\n`;
-                body += `2) Sedes: ${questionnaireAnswers.locations}\n`;
-                body += `3) Documentos: ${questionnaireAnswers.documents.join(', ') || 'Nenhum'}\n`;
-                body += `4) CIPA: ${questionnaireAnswers.cipa}\n`;
-                body += `5) Máquinas: ${questionnaireAnswers.machines}\n`;
-                body += `6) Altura/Confinado: ${questionnaireAnswers.confined}\n`;
-                body += `7) Ruído: ${questionnaireAnswers.noise}\n`;
-                body += `8) Calor: ${questionnaireAnswers.heat}\n`;
-                body += `9) Periculosidade: ${questionnaireAnswers.danger}\n`;
-                body += `10) Material Radioativo: ${questionnaireAnswers.radioactive}\n`;
-                body += `11) Área Construída: ${questionnaireAnswers.area}\n`;
-                body += `12) Outras Informações: ${questionnaireAnswers.other}\n\n`;
-                body += `Verifique o painel para mais detalhes e para carregar a seleção de serviços do cliente.`;
+                const btnGenerate = document.getElementById('btn-generate-proposal');
+                btnGenerate.disabled = true;
+                btnGenerate.textContent = 'Solicitação Enviada';
+                btnGenerate.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btnGenerate.classList.add('bg-gray-400', 'cursor-not-allowed');
 
-                window.location.href = `mailto:carla@medmais.med.br,contato@medmais.med.br?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-                document.getElementById('btn-accept-proposal').disabled = true;
-                document.getElementById('btn-accept-proposal').textContent = 'Solicitação Enviada';
 
             } catch (error) {
                 console.error("Erro ao enviar solicitação: ", error);
