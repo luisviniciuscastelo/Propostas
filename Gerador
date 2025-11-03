@@ -2092,17 +2092,28 @@
                 extraInputs += `<select class="frequency-selector"><option value="anual" selected>Anual</option><option value="mensal">Mensal</option><option value="semanal">Semanal</option></select>`;
             }
 
-            const priceInputHTML = isClientView ? '' : '<input type="text" class="price-input" readonly>';
+            let priceSectionHTML = '';
+            if (!isClientView) {
+                priceSectionHTML = `
+                <div class="text-right font-semibold text-cyan-700 mt-2 flex items-center justify-end gap-2 flex-wrap">
+                    ${extraInputs}
+                    <input type="text" class="price-input" readonly>
+                    <span class="total-price-display text-gray-800 font-bold w-full text-right"></span>
+                </div>`;
+            } else if (extraInputs) {
+                 priceSectionHTML = `
+                <div class="text-right font-semibold text-cyan-700 mt-2 flex items-center justify-end gap-2 flex-wrap">
+                    ${extraInputs}
+                </div>`;
+            }
+
 
             card.innerHTML = ` 
                 <div class="flex justify-between items-start"> 
                     <div><h4 class="font-bold text-gray-800">${service.nome}</h4><p class="text-sm text-gray-500">${service.obs || ''}</p></div> 
                     <span class="text-2xl text-gray-300">&#9675;</span> 
                 </div> 
-                <div class="text-right font-semibold text-cyan-700 mt-2 flex items-center justify-end gap-2 flex-wrap"> 
-                    ${extraInputs}${priceInputHTML}
-                    <span class="total-price-display text-gray-800 font-bold w-full text-right"></span> 
-                </div>`;
+                ${priceSectionHTML}`;
 
             const priceInput = card.querySelector('.price-input');
             if(priceInput) {
