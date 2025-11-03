@@ -587,6 +587,16 @@
             </div>
         </div>
 
+        <div id="questionnaire-answers-modal" class="modal-overlay">
+            <div class="modal-content max-w-2xl">
+                <h3 class="text-xl font-bold mb-6 text-center text-cyan-800">Respostas do Questionário</h3>
+                <div id="questionnaire-answers-content" class="space-y-4 text-sm max-h-[60vh] overflow-y-auto pr-4"></div>
+                <div class="flex justify-end mt-6 pt-4 border-t">
+                    <button id="modal-answers-close-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Fechar</button>
+                </div>
+            </div>
+        </div>
+
         <div id="accept-proposal-modal" class="modal-overlay">
             <div class="modal-content max-w-lg">
                 <h3 class="text-xl font-bold mb-6 text-center text-green-800">Confirmar Aceite da Proposta</h3>
@@ -1606,6 +1616,8 @@
                 const acceptanceHighlight = p.status === 'Aceita' && p.acceptanceData ? 'border-2 border-green-500 shadow-lg' : '';
                 const acceptanceInfo = p.status === 'Aceita' && p.acceptanceData ? `<p class="text-xs text-green-700 font-semibold mt-1">Aceita por: ${p.acceptanceData.fullName}</p>` : '';
 
+                const viewAnswersButton = p.status === 'Solicitada pelo Cliente' ?
+                    `<button class="view-answers-btn bg-cyan-100 text-cyan-800 px-3 py-1 rounded" data-id="${p.id}">Ver Respostas</button>` : '';
 
                 return ` 
                 <div class="p-4 bg-gray-50 rounded-lg flex justify-between items-center ${acceptanceHighlight}">
@@ -1618,6 +1630,7 @@
                         ${acceptanceInfo}
                     </div>
                     <div class="flex gap-2">
+                        ${viewAnswersButton}
                         <button class="details-proposal-btn bg-purple-100 text-purple-800 px-3 py-1 rounded" data-id="${p.id}">Acompanhar</button>
                         <button class="load-proposal-btn bg-blue-100 text-blue-800 px-3 py-1 rounded" data-id="${p.id}">Carregar</button>
                         <button class="delete-proposal-btn bg-red-100 text-red-800 px-3 py-1 rounded" data-id="${p.id}">Excluir</button>
@@ -3204,6 +3217,15 @@
             }
         });
 
+        const questionnaireAnswersModal = {
+            overlay: document.getElementById('questionnaire-answers-modal'),
+            content: document.getElementById('questionnaire-answers-content'),
+            closeBtn: document.getElementById('modal-answers-close-btn'),
+            show: () => questionnaireAnswersModal.overlay.classList.add('visible'),
+            hide: () => questionnaireAnswersModal.overlay.classList.remove('visible')
+        };
+        questionnaireAnswersModal.closeBtn.addEventListener('click', questionnaireAnswersModal.hide);
+
         savedProposalsContainer.addEventListener('click', (e) => {
             if (e.target.classList.contains('load-proposal-btn')) {
                 loadProposal(e.target.dataset.id);
@@ -3211,6 +3233,30 @@
             }
             if (e.target.classList.contains('delete-proposal-btn')) {
                 deleteProposal(e.target.dataset.id);
+            }
+            if (e.target.classList.contains('view-answers-btn')) {
+                const proposal = savedProposals.find(p => p.id === e.target.dataset.id);
+                if (proposal && proposal.questionnaireAnswers) {
+                    const answers = proposal.questionnaireAnswers;
+                    const contentHtml = `
+                        <div class="p-2 bg-gray-100 rounded"><strong>1) Atividades da empresa:</strong><p class="pl-2">${answers.activities || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>2) Quantas sedes:</strong><p class="pl-2">${answers.locations || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>3) Documentos existentes:</strong><p class="pl-2">${answers.documents.join(', ') || 'Nenhum'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>4) Possui CIPA:</strong><p class="pl-2">${answers.cipa || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>5) Atividades com máquinas:</strong><p class="pl-2">${answers.machines || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>6) Trabalho em altura/espaço confinado:</strong><p class="pl-2">${answers.confined || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>7) Exposição a ruído:</strong><p class="pl-2">${answers.noise || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>8) Exposição ao calor:</strong><p class="pl-2">${answers.heat || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>9) Atividades perigosas (eletricidade, etc.):</strong><p class="pl-2">${answers.danger || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>10) Manuseio de material radioativo:</strong><p class="pl-2">${answers.radioactive || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>11) Área construída (+750m² ou 2+ pavimentos):</strong><p class="pl-2">${answers.area || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>12) Outras informações:</strong><p class="pl-2">${answers.other || 'Nenhuma'}</p></div>
+                    `;
+                    questionnaireAnswersModal.content.innerHTML = contentHtml;
+                    questionnaireAnswersModal.show();
+                } else {
+                    toast.show("Respostas do questionário não encontradas para esta proposta.");
+                }
             }
             if (e.target.classList.contains('details-proposal-btn')) {
                 const proposal = savedProposals.find(p => p.id === e.target.dataset.id);
