@@ -705,11 +705,11 @@
                                 <input type="text" id="service-search-input" placeholder="🔎 Buscar serviço..." class="p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none">
                             </div>
                             <section>
-                                <h3 class="font-semibold text-lg mb-3 text-cyan-900">Serviços por Vida (Custo Mensal por Funcionário)</h3>
+                                <h3 id="servicos-por-vida-title" class="font-semibold text-lg mb-3 text-cyan-900">Serviços por Vida (Custo Mensal por Funcionário)</h3>
                                 <div id="servicos-por-vida" class="space-y-4"></div>
                             </section>
                             <section class="mt-8">
-                                <h3 class="font-semibold text-lg mb-3 text-cyan-900">Serviços Contratuais (Custo Anual Amortizado Mensalmente)</h3>
+                                <h3 id="servicos-anuais-title" class="font-semibold text-lg mb-3 text-cyan-900">Serviços Contratuais (Custo Anual Amortizado Mensalmente)</h3>
                                 <div id="servicos-anuais" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                             </section>
                             <section class="mt-8">
@@ -1902,8 +1902,14 @@
             if (unsubscribeClients) unsubscribeClients();
             if (unsubscribeLogs) unsubscribeLogs();
 
+            const servicosPorVidaTitle = document.getElementById('servicos-por-vida-title');
+            const servicosAnuaisTitle = document.getElementById('servicos-anuais-title');
+
             if (user && !user.isAnonymous) {
                 // --- VENDEDOR LOGADO ---
+                if (servicosPorVidaTitle) servicosPorVidaTitle.style.display = '';
+                if (servicosAnuaisTitle) servicosAnuaisTitle.style.display = '';
+
                 try {
                     console.log("Usuário autenticado. Configurando a visão do vendedor...");
                     clearForm(true); // Limpa o formulário para evitar dados de sessão de cliente
@@ -1986,6 +1992,9 @@
 
             } else {
                 // --- CLIENTE (NÃO LOGADO) ---
+                if (servicosPorVidaTitle) servicosPorVidaTitle.style.display = 'none';
+                if (servicosAnuaisTitle) servicosAnuaisTitle.style.display = 'none';
+
                 userId = null;
                 userEmail = null;
                 userInfoDisplay.textContent = '';
@@ -2224,25 +2233,34 @@
 
                 serviceCategories.forEach(category => {
                     if (groupedServices[category.id]) {
-                        const categoryWrapper = document.createElement('div');
-                        categoryWrapper.className = 'mb-6';
-                        const categoryTitle = document.createElement('h4');
-                        categoryTitle.className = 'font-semibold text-md mb-2 text-cyan-800 border-b pb-1';
-                        categoryTitle.textContent = category.name;
-                        categoryWrapper.appendChild(categoryTitle);
+                        const servicesForCategory = groupedServices[category.id];
 
-                        const servicesGrid = document.createElement('div');
-                        servicesGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+                        // Na visão do cliente, filtramos para que a lista contenha apenas serviços não ocultos
+                        const visibleServices = (isClientView ?
+                            servicesForCategory.filter(s => !s.oculto) :
+                            servicesForCategory).map(service => createServiceCard(service, pricingModel)).filter(Boolean);
 
-                        groupedServices[category.id].forEach(service => {
-                            const card = createServiceCard(service, pricingModel);
-                            if (card) { // Só adiciona o card se ele não for nulo
+
+                        // Apenas se houver serviços visíveis, criamos e adicionamos a seção da categoria
+                        if (visibleServices.length > 0) {
+                            const categoryWrapper = document.createElement('div');
+                            categoryWrapper.className = 'mb-6';
+                            const categoryTitle = document.createElement('h4');
+                            categoryTitle.className = 'font-semibold text-md mb-2 text-cyan-800 border-b pb-1';
+                            categoryTitle.textContent = category.name;
+                            categoryWrapper.appendChild(categoryTitle);
+
+                            const servicesGrid = document.createElement('div');
+                            servicesGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+
+                            visibleServices.forEach(card => {
                                 servicesGrid.appendChild(card);
-                            }
-                        });
+                            });
 
-                        categoryWrapper.appendChild(servicesGrid);
-                        container.appendChild(categoryWrapper);
+                            // Adicionamos a grid ao wrapper e o wrapper ao container principal
+                            categoryWrapper.appendChild(servicesGrid);
+                            container.appendChild(categoryWrapper);
+                        }
                     }
                 });
 
@@ -3062,14 +3080,6 @@
                 savedTab.appendChild(badge);
             }
         }
-
-        // --- Funções de Teste ---
-        function exposeForTesting() {
-            window.priceState = priceState;
-            window.renderSavedProposals = renderSavedProposals;
-            window.popularServicos = popularServicos;
-        }
-
         // --- Event Listeners --- 
         document.getElementById('add-category-btn').addEventListener('click', () => categoryModal.show());
         categoryModal.cancelBtn.addEventListener('click', () => categoryModal.hide());
