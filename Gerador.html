@@ -1989,10 +1989,54 @@
         });
 
         function setupListeners() {
+            console.log("Iniciando aplicação e carregando configurações...");
+            let configLoaded = false;
+
             // Fallback Timer: If Firebase takes too long, load with default data.
             const fallbackTimeout = setTimeout(() => {
-                if (isInitialLoad) {
-                    console.warn("Firebase demorou para responder. Carregando com dados padrão.");
+                if (configLoaded) return;
+
+                configLoaded = true;
+                console.warn("Timeout de 10s atingido. Conexão com Firebase lenta ou bloqueada. Carregando com dados padrão.");
+
+                priceState = initialPriceData;
+                serviceCategories = initialPriceData.serviceCategories || [];
+
+                popularServicos();
+                renderPriceTable();
+                renderServiceCategories();
+                clearForm(true);
+
+                loaderElem.style.display = 'none';
+                console.log("Aplicação iniciada com dados locais.");
+            }, 10000); // 10 seconds timeout
+
+            if (!configListenerAttached) {
+                onSnapshot(dbRef.config, (docSnap) => {
+                    if (configLoaded) return;
+
+                    configLoaded = true;
+                    clearTimeout(fallbackTimeout);
+                    console.log("Configurações do Firebase recebidas com sucesso.");
+
+                    const data = docSnap.exists() ? docSnap.data().priceState : initialPriceData;
+                    priceState = data;
+                    serviceCategories = data.serviceCategories || [];
+
+                    popularServicos();
+                    renderPriceTable();
+                    renderServiceCategories();
+
+                    loaderElem.style.display = 'none';
+                    console.log("Aplicação iniciada com dados do Firebase.");
+                }, (error) => {
+                    if (configLoaded) return;
+
+                    configLoaded = true;
+                    clearTimeout(fallbackTimeout);
+                    console.error("Erro ao carregar configurações do Firebase:", error);
+                    console.warn("Carregando com dados padrão devido a erro.");
+
                     priceState = initialPriceData;
                     serviceCategories = initialPriceData.serviceCategories || [];
 
@@ -2000,53 +2044,16 @@
                     renderPriceTable();
                     renderServiceCategories();
                     clearForm(true);
+
                     loaderElem.style.display = 'none';
-                    isInitialLoad = false; // Mark initial load as complete
-                }
-            }, 5000); // 5 seconds timeout
-
-            if (!configListenerAttached) {
-                onSnapshot(dbRef.config, async (docSnap) => {
-                    clearTimeout(fallbackTimeout); // Clear the timeout if Firebase responds in time
-                    const data = docSnap.exists() ? docSnap.data().priceState : initialPriceData;
-
-                    if (isInitialLoad) {
-                        priceState = data;
-                        serviceCategories = data.serviceCategories || [];
-
-                        popularServicos();
-                        renderPriceTable();
-                        renderServiceCategories();
-                        clearForm(true);
-                        loaderElem.style.display = 'none';
-                        isInitialLoad = false;
-                    } else {
-                        // If the fallback has already loaded the app, just update the state silently
-                        priceState = data;
-                        serviceCategories = data.serviceCategories || [];
-                        popularServicos();
-                        renderPriceTable();
-                        renderServiceCategories();
-                    }
-                }, (error) => {
-                    console.error("Erro ao ouvir configurações:", error);
-                    clearTimeout(fallbackTimeout); // Clear timeout on error too
-                    // If initial load hasn't completed, use fallback data
-                    if (isInitialLoad) {
-                        console.warn("Erro no Firebase. Carregando com dados padrão.");
-                        priceState = initialPriceData;
-                        serviceCategories = initialPriceData.serviceCategories || [];
-                        popularServicos();
-                        renderPriceTable();
-                        renderServiceCategories();
-                        clearForm(true);
-                        loaderElem.style.display = 'none';
-                        isInitialLoad = false;
-                    }
+                    console.log("Aplicação iniciada com dados locais após erro.");
                 });
                 configListenerAttached = true;
             }
         }
+
+        // --- INICIALIZAÇÃO DA APLICAÇÃO ---
+        setupListeners();
 
         // --- CÓDIGO RESTANTE (FUNÇÕES DO APP) --- 
 
