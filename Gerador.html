@@ -679,7 +679,7 @@
                                 <input type="hidden" id="generatorClientId">
                                 <div class="flex flex-col md:flex-row gap-4 items-center">
                                     <div class="relative flex-grow w-full">
-                                        <input type="text" id="clientName" placeholder="Busque por um cliente..." class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none w-full" autocomplete="off">
+                                        <input type="text" id="clientName" placeholder="Nome do Cliente" class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none w-full" autocomplete="off">
                                         <div id="client-search-results" class="absolute z-10 w-full bg-white border border-gray-300 rounded-b-lg mt-1 max-h-48 overflow-y-auto hidden"></div>
                                     </div>
                                     <button id="generator-add-client-btn" class="w-full md:w-auto bg-cyan-100 text-cyan-800 font-semibold py-3 px-4 rounded-lg hover:bg-cyan-200 transition-all whitespace-nowrap">+ Cadastrar Cliente</button>
@@ -1608,10 +1608,19 @@
                 'Solicitada pelo Cliente': 'bg-purple-200 text-purple-800',
             };
 
+            updateSavedProposalsTab(proposalsToRender);
             savedProposalsContainer.innerHTML = proposalsToRender.sort((a, b) => new Date(b.clientData.lastSaved) - new Date(a.clientData.lastSaved)).map(p => {
                 const lastSavedDate = p.clientData.lastSaved ? new Date(p.clientData.lastSaved).toLocaleString('pt-BR') : 'N/A';
                 const status = p.status || 'Criada';
                 const statusColor = statusColors[status] || 'bg-gray-200 text-gray-800';
+
+                // Adiciona a propriedade isNew para propostas de clientes que ainda não foram visualizadas
+                if (p.status === 'Solicitada pelo Cliente' && p.viewedByVendor !== true) {
+                    p.isNew = true;
+                }
+
+                const newProposalHighlight = p.isNew ? 'bg-yellow-100 border-yellow-400' : 'bg-gray-50';
+                const newProposalBadge = p.isNew ? '<span class="ml-2 text-xs font-bold text-white bg-red-500 px-2 py-1 rounded-full">NOVA!</span>' : '';
 
                 const acceptanceHighlight = p.status === 'Aceita' && p.acceptanceData ? 'border-2 border-green-500 shadow-lg' : '';
                 const acceptanceInfo = p.status === 'Aceita' && p.acceptanceData ? `<p class="text-xs text-green-700 font-semibold mt-1">Aceita por: ${p.acceptanceData.fullName}</p>` : '';
@@ -1620,11 +1629,12 @@
                     `<button class="view-answers-btn bg-cyan-100 text-cyan-800 px-3 py-1 rounded" data-id="${p.id}">Ver Respostas</button>` : '';
 
                 return ` 
-                <div class="p-4 bg-gray-50 rounded-lg flex justify-between items-center ${acceptanceHighlight}">
+                <div class="p-4 rounded-lg flex justify-between items-center ${newProposalHighlight} ${acceptanceHighlight}">
                     <div>
                         <div class="flex items-center gap-3">
                             <p class="font-bold text-gray-800">${p.clientData.clientName || 'Sem nome'}</p>
                             <span class="text-xs font-semibold px-2 py-1 rounded-full ${statusColor}">${status}</span>
+                            ${newProposalBadge}
                         </div>
                         <p class="text-sm text-gray-600">Salvo em: ${lastSavedDate}</p>
                         ${acceptanceInfo}
@@ -2035,6 +2045,7 @@
 
                 loaderElem.style.display = 'none';
                 console.log("Aplicação iniciada com dados locais.");
+                exposeForTesting();
             }, 10000); // 10 seconds timeout
 
             if (!configListenerAttached) {
@@ -2057,6 +2068,7 @@
                     mainAppContainer.classList.remove('hidden');
                     loaderElem.style.display = 'none';
                     console.log("Aplicação iniciada com dados do Firebase.");
+                    exposeForTesting();
                 }, (error) => {
                     if (configLoaded) return;
 
@@ -2075,6 +2087,7 @@
 
                     loaderElem.style.display = 'none';
                     console.log("Aplicação iniciada com dados locais após erro.");
+                    exposeForTesting();
                 });
                 configListenerAttached = true;
             }
@@ -2083,11 +2096,19 @@
         // --- INICIALIZAÇÃO DA APLICAÇÃO ---
         setupListeners();
 
+        // Expõe funções e estado para fins de teste
+        window.priceState = priceState;
+        window.renderSavedProposals = renderSavedProposals;
+
         // --- CÓDIGO RESTANTE (FUNÇÕES DO APP) --- 
 
         function createServiceCard(service, category) {
             const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
             const isObrigatorio = service.obrigatorio;
+
+            if (isClientView && service.oculto) {
+                return null; // Não renderiza o card se estiver oculto para o cliente
+            }
 
             const card = document.createElement('div');
             card.className = 'service-card p-4 border-2 border-gray-200 rounded-lg';
@@ -2199,6 +2220,7 @@
             const renderGroupedServices = (container, pricingModel) => {
                 const services = priceState[pricingModel] || [];
                 const groupedServices = groupServicesByCategory(services, pricingModel);
+                const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
 
                 serviceCategories.forEach(category => {
                     if (groupedServices[category.id]) {
@@ -2213,7 +2235,10 @@
                         servicesGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
 
                         groupedServices[category.id].forEach(service => {
-                            servicesGrid.appendChild(createServiceCard(service, pricingModel));
+                            const card = createServiceCard(service, pricingModel);
+                            if (card) { // Só adiciona o card se ele não for nulo
+                                servicesGrid.appendChild(card);
+                            }
                         });
 
                         categoryWrapper.appendChild(servicesGrid);
@@ -2345,6 +2370,28 @@
             });
 
             document.querySelectorAll('.service-card:not(.selected) .total-price-display').forEach(span => span.textContent = '');
+
+            // Adiciona custos de serviços que são obrigatórios e ocultos na visão do cliente
+            if (isClientView) {
+                ['porVida', 'anual'].forEach(category => {
+                    const services = priceState[category] || [];
+                    services.forEach(service => {
+                        if (service.obrigatorio && service.oculto) {
+                            let price = service.preco ?? getPriceFromState(vidas, service.precos);
+                            let monthlyContribution = 0;
+                            if (category === 'porVida') {
+                                monthlyContribution = price * vidas;
+                            } else {
+                                // Assume quantidade 1 para serviços anuais fixos ocultos/obrigatórios
+                                monthlyContribution = price / 12;
+                            }
+                            custoMensal += monthlyContribution;
+                            detailedCosts.push({ name: service.nome, cost: monthlyContribution, id: service.id });
+                        }
+                    });
+                });
+            }
+
             document.querySelectorAll('#palestras-container .dynamic-row, #outros-container .dynamic-row').forEach(row => {
                 const avulsoCost = parseCurrency(row.querySelector('.price-input').value);
                 custoMensal += avulsoCost / 12;
@@ -2617,7 +2664,7 @@
                 const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1);
                 let tableHtml = `<h3 class="text-lg font-semibold text-cyan-900">${categoryTitle.replace(/([A-Z])/g, ' $1').trim()}</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="bg-gray-100"><th class="p-2 text-left">Serviço</th>`;
                 TIERS.forEach(tier => tableHtml += `<th class="p-2">${tier.label}</th>`);
-                tableHtml += `<th class="p-2 text-center">Obrigatório</th><th class="p-2 text-center">Ações</th></tr></thead><tbody>`;
+                tableHtml += `<th class="p-2 text-center">Obrigatório</th><th class="p-2 text-center">Oculto</th><th class="p-2 text-center">Ações</th></tr></thead><tbody>`;
 
                 const services = priceState[category];
                 if (Array.isArray(services)) {
@@ -2632,9 +2679,13 @@
                             tableHtml += `<td class="p-1" colspan="${TIERS.length}"><input type="number" step="0.01" class="table-price-input w-32" value="${service.preco}" data-category="${category}" data-service-index="${serviceIndex}"></td>`;
                         }
                         const isObrigatorio = service.obrigatorio ? 'checked' : '';
+                        const isOculto = service.oculto ? 'checked' : '';
                         tableHtml += `
                                 <td class="p-2 text-center">
                                     <input type="checkbox" class="obrigatorio-checkbox" ${isObrigatorio} data-category="${category}" data-id="${service.id}">
+                                </td>
+                                <td class="p-2 text-center">
+                                    <input type="checkbox" class="oculto-checkbox" ${isOculto} data-category="${category}" data-id="${service.id}">
                                 </td>
                                 <td class="p-2 text-center whitespace-nowrap"> 
                                     <button class="edit-service-btn text-blue-500 hover:text-blue-700 p-1" title="Editar Serviço" data-id="${service.id}" data-category="${category}">✏️</button> 
@@ -2684,6 +2735,28 @@
                             console.error("Erro ao atualizar status de serviço obrigatório:", error);
                             toast.show("Falha ao salvar a alteração.");
                             e.target.checked = !isChecked; // Reverte a mudança visual em caso de erro
+                        }
+                    }
+                });
+            });
+
+            container.querySelectorAll('.oculto-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', async (e) => {
+                    const { category, id } = e.target.dataset;
+                    const isChecked = e.target.checked;
+
+                    const newPriceState = JSON.parse(JSON.stringify(priceState));
+                    const service = newPriceState[category].find(s => s.id === id);
+
+                    if (service) {
+                        service.oculto = isChecked;
+                        try {
+                            await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                            toast.show('Status de visibilidade do serviço atualizado.');
+                        } catch (error) {
+                            console.error("Erro ao atualizar status de visibilidade:", error);
+                            toast.show("Falha ao salvar a alteração.");
+                            e.target.checked = !isChecked;
                         }
                     }
                 });
@@ -2973,6 +3046,30 @@
             });
         }
 
+        function updateSavedProposalsTab(proposals) {
+            const savedTab = document.querySelector('.tab-button[data-tab="saved"]');
+            if (!savedTab) return;
+
+            const newProposalsCount = proposals.filter(p => p.status === 'Solicitada pelo Cliente' && p.viewedByVendor !== true).length;
+
+            const existingBadge = savedTab.querySelector('.notification-badge');
+            if (existingBadge) existingBadge.remove();
+
+            if (newProposalsCount > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'notification-badge ml-2 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full';
+                badge.textContent = newProposalsCount;
+                savedTab.appendChild(badge);
+            }
+        }
+
+        // --- Funções de Teste ---
+        function exposeForTesting() {
+            window.priceState = priceState;
+            window.renderSavedProposals = renderSavedProposals;
+            window.popularServicos = popularServicos;
+        }
+
         // --- Event Listeners --- 
         document.getElementById('add-category-btn').addEventListener('click', () => categoryModal.show());
         categoryModal.cancelBtn.addEventListener('click', () => categoryModal.hide());
@@ -3103,51 +3200,11 @@
 
             const publicProposalRef = doc(db, `publicArtifacts/${appId}/proposals`, proposalId);
             const publicClientRef = doc(db, `publicArtifacts/${appId}/clients`, clientId);
-            const mailQueueRef = collection(db, 'mail_queue');
 
             try {
-
-                const subject = `Nova Solicitação de Proposta - ${proposalData.clientData.clientName}`;
-                let htmlBody = `
-                    <p>Uma nova proposta foi solicitada online.</p>
-                    <h3>Dados do Cliente</h3>
-                    <ul>
-                        <li><strong>Empresa:</strong> ${proposalData.clientData.clientName}</li>
-                        <li><strong>CNPJ:</strong> ${proposalData.clientData.clientCnpj || 'Não informado'}</li>
-                        <li><strong>Contato:</strong> ${proposalData.clientData.clientContactPerson || 'Não informado'}</li>
-                        <li><strong>Email:</strong> ${proposalData.clientData.clientEmail}</li>
-                        <li><strong>Telefone:</strong> ${proposalData.clientData.clientPhone || 'Não informado'}</li>
-                    </ul>
-                    <h3>Respostas do Questionário</h3>
-                    <ul>
-                        <li><strong>1) Atividades:</strong> ${questionnaireAnswers.activities}</li>
-                        <li><strong>2) Sedes:</strong> ${questionnaireAnswers.locations}</li>
-                        <li><strong>3) Documentos:</strong> ${questionnaireAnswers.documents.join(', ') || 'Nenhum'}</li>
-                        <li><strong>4) CIPA:</strong> ${questionnaireAnswers.cipa}</li>
-                        <li><strong>5) Máquinas:</strong> ${questionnaireAnswers.machines}</li>
-                        <li><strong>6) Altura/Confinado:</strong> ${questionnaireAnswers.confined}</li>
-                        <li><strong>7) Ruído:</strong> ${questionnaireAnswers.noise}</li>
-                        <li><strong>8) Calor:</strong> ${questionnaireAnswers.heat}</li>
-                        <li><strong>9) Periculosidade:</strong> ${questionnaireAnswers.danger}</li>
-                        <li><strong>10) Material Radioativo:</strong> ${questionnaireAnswers.radioactive}</li>
-                        <li><strong>11) Área Construída:</strong> ${questionnaireAnswers.area}</li>
-                        <li><strong>12) Outras Informações:</strong> ${questionnaireAnswers.other}</li>
-                    </ul>
-                    <p>Verifique o painel para mais detalhes e para carregar a seleção de serviços do cliente.</p>
-                `;
-
-                const mailDoc = {
-                    to: ['carla@medmais.med.br', 'contato@medmais.med.br'],
-                    message: {
-                        subject: subject,
-                        html: htmlBody,
-                    }
-                };
-
                 const batch = writeBatch(db);
                 batch.set(publicClientRef, clientToSave);
                 batch.set(publicProposalRef, proposalData);
-                batch.set(doc(mailQueueRef), mailDoc); // Adiciona o e-mail à fila
 
                 await batch.commit();
 
@@ -3258,8 +3315,16 @@
                     toast.show("Respostas do questionário não encontradas para esta proposta.");
                 }
             }
+
+            const proposalId = e.target.dataset.id;
+            const proposal = savedProposals.find(p => p.id === proposalId);
+
+            if (proposal && proposal.isNew) {
+                 const proposalRef = doc(db, `publicArtifacts/${appId}/proposals`, proposalId);
+                 updateDoc(proposalRef, { viewedByVendor: true }).catch(err => console.error("Erro ao marcar proposta como visualizada:", err));
+            }
+
             if (e.target.classList.contains('details-proposal-btn')) {
-                const proposal = savedProposals.find(p => p.id === e.target.dataset.id);
                 if (proposal) {
                     proposalDetailsModal.proposalIdInput.value = proposal.id;
                     proposalDetailsModal.statusSelect.value = proposal.status || 'Criada';
