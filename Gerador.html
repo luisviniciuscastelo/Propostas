@@ -624,6 +624,16 @@
             </div>
         </div>
 
+        <div id="thank-you-modal" class="modal-overlay">
+            <div class="modal-content text-center max-w-lg">
+                <h3 class="text-2xl font-bold text-green-700 mb-4">Obrigado!</h3>
+                <p class="text-gray-600 mb-6">Recebemos seu pedido de orçamento com sucesso. Nossa equipe comercial entrará em contato em breve para dar continuidade ao seu atendimento.</p>
+                <div class="flex justify-center">
+                    <button id="modal-thank-you-close-btn" class="bg-green-600 text-white font-semibold py-2 px-8 rounded-lg hover:bg-green-700 transition-all">Fechar</button>
+                </div>
+            </div>
+        </div>
+
         <div id="category-modal" class="modal-overlay">
             <div class="modal-content">
                 <h3 id="category-modal-title" class="text-xl font-bold mb-6 text-center text-cyan-800">Adicionar Nova Categoria</h3>
@@ -773,7 +783,7 @@
                                     Salvar Proposta
                                 </button>
                                 <button id="btn-generate-proposal" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-all shadow-md" style="display: none;">
-                                    Gerar Proposta
+                                    Pedir Orçamento
                                 </button>
                             </div>
                         </div>
@@ -2012,7 +2022,7 @@
                 if (addOutroBtn) addOutroBtn.style.display = 'none';
                 document.getElementById('generator-add-client-btn').style.display = 'none';
                 btnSaveProposal.style.display = 'none';
-                btnGenerateProposal.textContent = 'Gerar Proposta';
+                btnGenerateProposal.textContent = 'Pedir Orçamento';
                 btnGenerateProposal.className = 'w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-all shadow-md';
                 btnGenerateProposal.style.display = '';
                 document.getElementById('btn-new-proposal').style.display = 'none';
@@ -2487,6 +2497,7 @@
             }).join('');
 
             return `<div class="prose max-w-none"> 
+                <div class="text-center mb-8"><img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" alt="Logo Medmais" style="width: 150px; margin: 0 auto;"></div>
                 <h2 class="text-center font-bold text-xl">PROPOSTA COMERCIAL MEDMAIS</h2> 
                 <p><strong>Elaborada em:</strong> ${today}</p> 
                 <p><strong>Para:</strong> ${client.clientContactPerson || 'Não informado'}</p> 
@@ -2547,6 +2558,7 @@
             }).join('');
 
             return `<div class="prose prose-sm max-w-none"> 
+                <div class="text-center mb-8"><img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" alt="Logo Medmais" style="width: 150px; margin: 0 auto;"></div>
                 <h3 class="text-center font-bold">CONTRATO DE PRESTAÇÃO DE SERVIÇO DE SST</h3> 
                 <p><strong>CONTRATANTE:</strong> ${client.clientName}, CNPJ nº ${client.clientCnpj}, com sede em ${client.clientAddress}, representada por ${client.clientContactPerson}.</p> 
                 <p><strong>CONTRATADA:</strong> MEDMAIS SOLUÇÕES MÉDICAS S/S LTDA., CNPJ nº 12.518.597/0001-40.</p> 
@@ -3219,11 +3231,11 @@
                 await batch.commit();
 
                 document.getElementById('questionnaire-modal').classList.remove('visible');
-                toast.show('Solicitação de proposta enviada com sucesso! Nossa equipe entrará em contato.');
+                thankYouModal.show();
 
                 const btnGenerate = document.getElementById('btn-generate-proposal');
                 btnGenerate.disabled = true;
-                btnGenerate.textContent = 'Solicitação Enviada';
+                btnGenerate.textContent = 'Orçamento Solicitado';
                 btnGenerate.classList.remove('bg-blue-600', 'hover:bg-blue-700');
                 btnGenerate.classList.add('bg-gray-400', 'cursor-not-allowed');
 
@@ -3292,6 +3304,14 @@
             hide: () => questionnaireAnswersModal.overlay.classList.remove('visible')
         };
         questionnaireAnswersModal.closeBtn.addEventListener('click', questionnaireAnswersModal.hide);
+
+        const thankYouModal = {
+            overlay: document.getElementById('thank-you-modal'),
+            closeBtn: document.getElementById('modal-thank-you-close-btn'),
+            show: () => thankYouModal.overlay.classList.add('visible'),
+            hide: () => thankYouModal.overlay.classList.remove('visible')
+        };
+        thankYouModal.closeBtn.addEventListener('click', thankYouModal.hide);
 
         savedProposalsContainer.addEventListener('click', (e) => {
             if (e.target.classList.contains('load-proposal-btn')) {
