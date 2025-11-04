@@ -883,7 +883,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         // --- CONFIGURAÇÃO FIREBASE --- 
         const firebaseConfig = {
-            apiKey: "AIzaSyDo10f_5Lqy1fhhcW1K6sEpmYRymuAHhFk",
+            apiKey: "FIREBASE_API_KEY",
             authDomain: "medmais-propostas.firebaseapp.com",
             projectId: "medmais-propostas",
             storageBucket: "medmais-propostas.firebasestorage.app",
@@ -1728,7 +1728,7 @@
                 originalCategory,
                 newCategory,
                 name,
-                description,
+                descricao,
                 pricingType,
                 serviceType,
                 categoryId
@@ -1743,7 +1743,7 @@
             const [serviceToUpdate] = newPriceState[originalCategory].splice(serviceIndex, 1);
 
             serviceToUpdate.nome = name;
-            serviceToUpdate.descricao = description;
+            serviceToUpdate.descricao = descricao;
             serviceToUpdate.categoryId = categoryId;
 
             if (pricingType === 'faixa') {
@@ -1913,6 +1913,8 @@
         });
 
         onAuthStateChanged(auth, async (user) => {
+            const mainTitle = document.querySelector('h1');
+            const mainSubtitle = mainTitle.nextElementSibling;
             const vendorOnlyTabs = [
                 document.querySelector('.tab-button[data-tab="clients"]'),
                 document.querySelector('.tab-button[data-tab="preview-contract"]'),
@@ -1928,6 +1930,7 @@
             const addPalestraBtn = document.getElementById('add-palestra');
             const addOutroBtn = document.getElementById('add-outro');
             const vendorOnlyTitles = document.querySelectorAll('.vendor-only-title');
+            const servicosAvulsosSection = addPalestraBtn.closest('section');
 
             // Detach all auth-dependent listeners on any auth state change
             if (unsubscribeProposals) unsubscribeProposals();
@@ -1968,6 +1971,9 @@
                     if (summaryBox) summaryBox.style.display = '';
                     if (addPalestraBtn) addPalestraBtn.style.display = '';
                     if (addOutroBtn) addOutroBtn.style.display = '';
+                    if (servicosAvulsosSection) servicosAvulsosSection.style.display = '';
+                    if (mainTitle) mainTitle.textContent = 'Sistema de Gerenciamento de Propostas';
+                    if (mainSubtitle) mainSubtitle.textContent = 'Navegue entre as abas para criar, visualizar e gerenciar suas propostas.';
                     document.getElementById('generator-add-client-btn').style.display = '';
                     btnSaveProposal.style.display = '';
                     vendorOnlyTitles.forEach(title => title.style.display = 'block');
@@ -2042,8 +2048,9 @@
                 vendorOnlyTabs.forEach(tab => tab && (tab.style.display = 'none'));
                 if (financialParams) financialParams.style.display = 'none';
                 if (summaryBox) summaryBox.style.display = 'none';
-                if (addPalestraBtn) addPalestraBtn.style.display = 'none';
-                if (addOutroBtn) addOutroBtn.style.display = 'none';
+                if (servicosAvulsosSection) servicosAvulsosSection.style.display = 'none';
+                if (mainTitle) mainTitle.textContent = 'Solicite seu orçamento!';
+                if (mainSubtitle) mainSubtitle.textContent = 'Preencha os dados e selecione os serviços desejados para receber uma proposta personalizada.';
                 document.getElementById('generator-add-client-btn').style.display = 'none';
                 btnSaveProposal.style.display = 'none';
                 vendorOnlyTitles.forEach(title => title.style.display = 'none');
@@ -2159,7 +2166,7 @@
             }
 
             const card = document.createElement('div');
-            card.className = 'service-card p-4 border-2 border-gray-200 rounded-lg';
+            card.className = 'service-card p-4 border-2 border-gray-200 rounded-lg flex flex-col justify-between h-full';
             if (!isObrigatorio || !isClientView) {
                  card.classList.add('cursor-pointer');
             }
@@ -2174,28 +2181,29 @@
                 extraInputs += `<select class="frequency-selector"><option value="anual" selected>Anual</option><option value="mensal">Mensal</option><option value="semanal">Semanal</option></select>`;
             }
 
-            let priceSectionHTML = '';
+            let bottomSectionHTML = '';
             if (!isClientView) {
-                priceSectionHTML = `
+                bottomSectionHTML = `
                 <div class="text-right font-semibold text-cyan-700 mt-2 flex items-center justify-end gap-2 flex-wrap">
                     ${extraInputs}
                     <input type="text" class="price-input" readonly>
                     <span class="total-price-display text-gray-800 font-bold w-full text-right"></span>
                 </div>`;
-            } else if (extraInputs) {
-                 priceSectionHTML = `
-                <div class="text-right font-semibold text-cyan-700 mt-2 flex items-center justify-end gap-2 flex-wrap">
-                    ${extraInputs}
-                </div>`;
+            } else {
+                const descriptionHTML = service.descricao ? `<div class="text-sm text-gray-600 mt-2">${service.descricao}</div>` : '';
+                const extraInputsHTML = extraInputs ? `<div class="text-right mt-2 flex items-center justify-end gap-2 flex-wrap">${extraInputs}</div>` : '';
+                bottomSectionHTML = `<div>${descriptionHTML}${extraInputsHTML}</div>`;
             }
 
 
-            card.innerHTML = ` 
-                <div class="flex justify-between items-start"> 
-                    <div><h4 class="font-bold text-gray-800">${service.nome}</h4><p class="text-sm text-gray-500">${service.obs || ''}</p></div> 
-                    <span class="text-2xl text-gray-300">&#9675;</span> 
-                </div> 
-                ${priceSectionHTML}`;
+            card.innerHTML = `
+                <div>
+                    <div class="flex justify-between items-start">
+                        <div><h4 class="font-bold text-gray-800">${service.nome}</h4><p class="text-sm text-gray-500">${service.descricao || service.obs || ''}</p></div>
+                        <span class="text-2xl text-gray-300">&#9675;</span>
+                    </div>
+                </div>
+                ${bottomSectionHTML}`;
 
             const priceInput = card.querySelector('.price-input');
             if(priceInput) {
@@ -3186,7 +3194,7 @@
                 originalCategory: editServiceModal.serviceOriginalCategoryInput.value,
                 newCategory: editServiceModal.billingModelSelect.value,
                 name: editServiceModal.serviceNameInput.value,
-                description: editServiceModal.serviceDescriptionInput.value,
+                descricao: editServiceModal.serviceDescriptionInput.value,
                 categoryId: editServiceModal.categorySelect.value,
                 pricingType: editServiceModal.servicePricingTypeSelect.value,
                 serviceType: editServiceModal.serviceTypeSelect.value
