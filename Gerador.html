@@ -1648,7 +1648,7 @@
                 const viewAnswersButton = p.status === 'Solicitada pelo Cliente' ?
                     `<button class="view-answers-btn bg-cyan-100 text-cyan-800 px-3 py-1 rounded" data-id="${p.id}">Ver Respostas</button>` : '';
 
-                return ` 
+                return `
                 <div class="p-4 rounded-lg flex justify-between items-center ${newProposalHighlight} ${acceptanceHighlight}">
                     <div>
                         <div class="flex items-center gap-3">
@@ -2159,17 +2159,74 @@
 
         // --- CÓDIGO RESTANTE (FUNÇÕES DO APP) --- 
 
+        function createServiceTableRow(service, category) {
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous; // Should be true here
+            const isObrigatorio = service.obrigatorio;
+
+            if (isClientView && service.oculto) {
+                return null;
+            }
+
+            const row = document.createElement('tr');
+            row.className = 'service-row border-b';
+            row.dataset.id = service.id;
+            row.dataset.category = category;
+
+            let extraInputs = '';
+            if (service.tipo === 'quantidade') {
+                extraInputs += `<input type="number" value="1" min="1" class="quantity-input" data-label="${service.obs || ''}">`;
+            }
+            if (service.id === 'atend_in_company') {
+                extraInputs += `<select class="frequency-selector"><option value="anual" selected>Anual</option><option value="mensal">Mensal</option><option value="semanal">Semanal</option></select>`;
+            }
+
+            const checkedAttribute = isObrigatorio ? 'checked disabled' : '';
+
+            row.innerHTML = `
+                <td class="p-2 text-center align-middle">
+                    <input type="checkbox" class="service-checkbox h-5 w-5 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500" ${checkedAttribute}>
+                </td>
+                <td class="p-2 align-middle font-semibold text-gray-800">${service.nome}</td>
+                <td class="p-2 align-middle">${extraInputs}</td>
+                <td class="p-2 align-middle text-sm text-gray-600">${service.descricao || ''}</td>
+            `;
+
+            const checkbox = row.querySelector('.service-checkbox');
+            const toggleSelection = () => {
+                row.classList.toggle('selected', checkbox.checked);
+                runAllUpdates();
+            };
+
+            checkbox.addEventListener('change', toggleSelection);
+
+            if (isObrigatorio) {
+                setTimeout(() => {
+                    if (!checkbox.checked) {
+                         checkbox.checked = true;
+                         toggleSelection();
+                    }
+                }, 0);
+            }
+
+            row.querySelectorAll('.quantity-input, .frequency-selector').forEach(input => {
+                input.addEventListener('change', runAllUpdates);
+                input.addEventListener('click', (e) => e.stopPropagation());
+            });
+
+            return row;
+        }
+
         function createServiceCard(service, category) {
             const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
             const isObrigatorio = service.obrigatorio;
 
             if (isClientView && service.oculto) {
-                return null; // Não renderiza o card se estiver oculto para o cliente
+                return null;
             }
 
             const card = document.createElement('div');
             card.className = 'service-card p-4 border-2 border-gray-200 rounded-lg flex flex-col justify-between h-full';
-            if (!isObrigatorio || !isClientView) {
+            if (!isObrigatorio) {
                  card.classList.add('cursor-pointer');
             }
             card.dataset.id = service.id;
@@ -2183,25 +2240,17 @@
                 extraInputs += `<select class="frequency-selector"><option value="anual" selected>Anual</option><option value="mensal">Mensal</option><option value="semanal">Semanal</option></select>`;
             }
 
-            let bottomSectionHTML = '';
-            if (!isClientView) {
-                bottomSectionHTML = `
+            const bottomSectionHTML = `
                 <div class="text-right font-semibold text-cyan-700 mt-2 flex items-center justify-end gap-2 flex-wrap">
                     ${extraInputs}
                     <input type="text" class="price-input" readonly>
                     <span class="total-price-display text-gray-800 font-bold w-full text-right"></span>
                 </div>`;
-            } else {
-                const descriptionHTML = service.descricao ? `<div class="text-sm text-gray-600 mt-2">${service.descricao}</div>` : '';
-                const extraInputsHTML = extraInputs ? `<div class="text-right mt-2 flex items-center justify-end gap-2 flex-wrap">${extraInputs}</div>` : '';
-                bottomSectionHTML = `<div>${descriptionHTML}${extraInputsHTML}</div>`;
-            }
-
 
             card.innerHTML = `
                 <div>
                     <div class="flex justify-between items-start">
-                        <div><h4 class="font-bold text-gray-800">${service.nome}</h4><p class="text-sm text-gray-500">${service.descricao || service.obs || ''}</p></div>
+                        <div><h4 class="font-bold text-gray-800">${service.nome}</h4></div>
                         <span class="text-2xl text-gray-300">&#9675;</span>
                     </div>
                 </div>
@@ -2222,16 +2271,10 @@
                 runAllUpdates();
             };
 
-            if (!isObrigatorio || !isClientView) {
-                card.addEventListener('click', (e) => {
-                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-                    toggleSelection();
-                });
-            }
-
-            if(isClientView && isObrigatorio){
+            card.addEventListener('click', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
                 toggleSelection();
-            }
+            });
 
             card.querySelectorAll('.quantity-input, .frequency-selector').forEach(input => {
                 input.addEventListener('change', runAllUpdates);
@@ -2262,8 +2305,9 @@
                 anual: document.getElementById('servicos-anuais')
             };
             Object.values(containers).forEach(c => c.innerHTML = '');
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
 
-            const groupServicesByCategory = (services, pricingModel) => {
+            const groupServicesByCategory = (services) => {
                 const grouped = {};
                 services.forEach(service => {
                     const categoryId = service.categoryId || 'sem_categoria';
@@ -2275,67 +2319,92 @@
                 return grouped;
             };
 
-            const renderGroupedServices = (container, pricingModel) => {
-                const services = priceState[pricingModel] || [];
-                const groupedServices = groupServicesByCategory(services, pricingModel);
-                const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            if (isClientView) {
+                const renderTableForModel = (container, pricingModel) => {
+                    const services = priceState[pricingModel] || [];
+                    const groupedServices = groupServicesByCategory(services);
 
-                serviceCategories.forEach(category => {
-                    if (groupedServices[category.id]) {
-                        const servicesForCategory = groupedServices[category.id];
+                    serviceCategories.forEach(category => {
+                        if (groupedServices[category.id]) {
+                            const servicesForCategory = groupedServices[category.id];
+                            const visibleServicesRows = servicesForCategory
+                                .map(service => createServiceTableRow(service, pricingModel))
+                                .filter(Boolean);
 
-                        // Na visão do cliente, filtramos para que a lista contenha apenas serviços não ocultos
-                        const visibleServices = (isClientView ?
-                            servicesForCategory.filter(s => !s.oculto) :
-                            servicesForCategory).map(service => createServiceCard(service, pricingModel)).filter(Boolean);
-
-
-                        // Apenas se houver serviços visíveis, criamos e adicionamos a seção da categoria
-                        if (visibleServices.length > 0) {
-                            const categoryWrapper = document.createElement('div');
-                            categoryWrapper.className = 'mb-6';
-                            const categoryTitle = document.createElement('h4');
-                            categoryTitle.className = 'font-semibold text-md mb-2 text-cyan-800 border-b pb-1';
-                            categoryTitle.textContent = category.name;
-                            categoryWrapper.appendChild(categoryTitle);
-
-                            const servicesGrid = document.createElement('div');
-                            servicesGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
-
-                            visibleServices.forEach(card => {
-                                servicesGrid.appendChild(card);
-                            });
-
-                            // Adicionamos a grid ao wrapper e o wrapper ao container principal
-                            categoryWrapper.appendChild(servicesGrid);
-                            container.appendChild(categoryWrapper);
+                            if (visibleServicesRows.length > 0) {
+                                const categoryWrapper = document.createElement('div');
+                                categoryWrapper.className = 'mb-6';
+                                categoryWrapper.innerHTML = `
+                                    <h4 class="font-semibold text-md mb-2 text-cyan-800 border-b pb-1">${category.name}</h4>
+                                    <div class="overflow-x-auto bg-white rounded-lg border">
+                                        <table class="w-full text-sm">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th class="p-2 w-16 text-center font-semibold text-gray-600">Selecionar</th>
+                                                    <th class="p-2 text-left font-semibold text-gray-600">Serviço</th>
+                                                    <th class="p-2 text-left w-48 font-semibold text-gray-600">Quantidade/Frequência</th>
+                                                    <th class="p-2 text-left font-semibold text-gray-600">Descrição</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                `;
+                                const tbody = categoryWrapper.querySelector('tbody');
+                                visibleServicesRows.forEach(row => tbody.appendChild(row));
+                                container.appendChild(categoryWrapper);
+                            }
                         }
-                    }
-                });
+                    });
+                };
+                containers.porVida.className = 'space-y-4';
+                containers.anual.className = 'space-y-4';
+                renderTableForModel(containers.porVida, 'porVida');
+                renderTableForModel(containers.anual, 'anual');
+            } else {
+                const renderCardsForModel = (container, pricingModel) => {
+                    const services = priceState[pricingModel] || [];
+                    const groupedServices = groupServicesByCategory(services);
 
-                // Render services without a category
-                if (groupedServices['sem_categoria']) {
-                    const categoryWrapper = document.createElement('div');
-                    categoryWrapper.className = 'mb-6';
-                    const categoryTitle = document.createElement('h4');
-                    categoryTitle.className = 'font-semibold text-md mb-2 text-gray-500 border-b pb-1';
-                    categoryTitle.textContent = 'Sem Categoria';
-                    categoryWrapper.appendChild(categoryTitle);
+                    serviceCategories.forEach(category => {
+                        if (groupedServices[category.id]) {
+                            const servicesForCategory = groupedServices[category.id];
+                            const serviceCards = servicesForCategory
+                                .map(service => createServiceCard(service, pricingModel))
+                                .filter(Boolean);
 
-                    const servicesGrid = document.createElement('div');
-                    servicesGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
-
-                    groupedServices['sem_categoria'].forEach(service => {
-                        servicesGrid.appendChild(createServiceCard(service, pricingModel));
+                            if (serviceCards.length > 0) {
+                                const categoryWrapper = document.createElement('div');
+                                categoryWrapper.className = 'mb-6';
+                                categoryWrapper.innerHTML = `<h4 class="font-semibold text-md mb-2 text-cyan-800 border-b pb-1">${category.name}</h4>`;
+                                const servicesGrid = document.createElement('div');
+                                servicesGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+                                serviceCards.forEach(card => servicesGrid.appendChild(card));
+                                categoryWrapper.appendChild(servicesGrid);
+                                container.appendChild(categoryWrapper);
+                            }
+                        }
                     });
 
-                    categoryWrapper.appendChild(servicesGrid);
-                    container.appendChild(categoryWrapper);
-                }
-            };
+                    if (groupedServices['sem_categoria']) {
+                         const categoryWrapper = document.createElement('div');
+                         categoryWrapper.className = 'mb-6';
+                         categoryWrapper.innerHTML = `<h4 class="font-semibold text-md mb-2 text-gray-500 border-b pb-1">Sem Categoria</h4>`;
+                         const servicesGrid = document.createElement('div');
+                         servicesGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+                         groupedServices['sem_categoria'].forEach(service => {
+                             servicesGrid.appendChild(createServiceCard(service, pricingModel));
+                         });
+                         categoryWrapper.appendChild(servicesGrid);
+                         container.appendChild(categoryWrapper);
+                    }
+                };
 
-            renderGroupedServices(containers.porVida, 'porVida');
-            renderGroupedServices(containers.anual, 'anual');
+                containers.porVida.className = 'space-y-4';
+                containers.anual.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+                renderCardsForModel(containers.porVida, 'porVida');
+                renderCardsForModel(containers.anual, 'anual');
+            }
         }
 
         function updateSuggestedValues() {
@@ -2343,11 +2412,10 @@
             const vidas = parseInt(formElements.numVidas.value) || 0;
             const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
 
-            document.querySelectorAll('.service-card').forEach(card => {
-                const {
-                    id,
-                    category
-                } = card.dataset;
+            const selector = isClientView ? '.service-row' : '.service-card';
+
+            document.querySelectorAll(selector).forEach(el => {
+                const { id, category } = el.dataset;
                 const services = priceState[category];
                 if (!services || !Array.isArray(services)) return;
 
@@ -2355,7 +2423,7 @@
                 if (!service) return;
 
                 if (!isClientView) {
-                    const priceInput = card.querySelector('.price-input');
+                    const priceInput = el.querySelector('.price-input');
                     let pricePerUnit = service.preco ?? getPriceFromState(vidas, service.precos);
                     if (service.isDynamic) {
                         const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
@@ -2366,7 +2434,7 @@
                 }
 
                 if (service.sugestao_fator) {
-                    const qtyInput = card.querySelector('.quantity-input');
+                    const qtyInput = el.querySelector('.quantity-input');
                     if (qtyInput) {
                         let suggestedQty = vidas * service.sugestao_fator;
                         if (service.sugestao_divisor) {
@@ -2384,11 +2452,10 @@
             let detailedCosts = [];
             const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
 
-            document.querySelectorAll('.service-card.selected').forEach(card => {
-                const {
-                    id,
-                    category
-                } = card.dataset;
+            const selectedServicesSelector = isClientView ? '.service-row.selected' : '.service-card.selected';
+
+            document.querySelectorAll(selectedServicesSelector).forEach(el => {
+                const { id, category } = el.dataset;
                 const services = priceState[category];
                 if (!services || !Array.isArray(services)) return;
 
@@ -2398,16 +2465,16 @@
                 let price;
                 if (isClientView) {
                     price = service.preco ?? getPriceFromState(vidas, service.precos);
-                     if (service.isDynamic) { // Recalculate dynamic price if needed
+                     if (service.isDynamic) {
                         const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
                         const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
                         price = (pgrPrice + pcmsoPrice) * service.multiplier;
                     }
                 } else {
-                    price = parseCurrency(card.querySelector('.price-input').value);
+                    price = parseCurrency(el.querySelector('.price-input').value);
                 }
 
-                const totalPriceDisplay = card.querySelector('.total-price-display');
+                const totalPriceDisplay = el.querySelector('.total-price-display');
                 let monthlyContribution = 0;
 
                 if (category === 'porVida') {
@@ -2415,10 +2482,10 @@
                     monthlyContribution = total;
                     if (totalPriceDisplay && !isClientView) totalPriceDisplay.textContent = `= ${formatCurrency(total)}`;
                 } else if (category === 'anual') {
-                    const quantity = parseInt(card.querySelector('.quantity-input') ?.value || 1);
+                    const quantity = parseInt(el.querySelector('.quantity-input')?.value || 1);
                     let totalAnual = price * (service.tipo === 'fixo' ? 1 : quantity);
                     if (id === 'atend_in_company') {
-                        const frequency = card.querySelector('.frequency-selector').value;
+                        const frequency = el.querySelector('.frequency-selector').value;
                         if (frequency === 'mensal') totalAnual = price * quantity * 12;
                         else if (frequency === 'semanal') totalAnual = price * quantity * 52;
                     }
@@ -2429,16 +2496,11 @@
                     }
                 }
                 custoMensal += monthlyContribution;
-                detailedCosts.push({
-                    name: service.nome,
-                    cost: monthlyContribution,
-                    id: service.id
-                });
+                detailedCosts.push({ name: service.nome, cost: monthlyContribution, id: service.id });
             });
 
             document.querySelectorAll('.service-card:not(.selected) .total-price-display').forEach(span => span.textContent = '');
 
-            // Adiciona custos de serviços que são obrigatórios e ocultos na visão do cliente
             if (isClientView) {
                 ['porVida', 'anual'].forEach(category => {
                     const services = priceState[category] || [];
@@ -2449,7 +2511,6 @@
                             if (category === 'porVida') {
                                 monthlyContribution = price * vidas;
                             } else {
-                                // Assume quantidade 1 para serviços anuais fixos ocultos/obrigatórios
                                 monthlyContribution = price / 12;
                             }
                             custoMensal += monthlyContribution;
@@ -2477,9 +2538,8 @@
             const taxRate = parseCurrency(formElements.tax.value) / 100;
             const profitRate = parseCurrency(formElements.profit.value) / 100;
             const divisor = 1 - (taxRate + profitRate);
-            let valorFinalMensal = 0,
-                impostoValor = 0,
-                lucroValor = 0;
+            let valorFinalMensal = 0, impostoValor = 0, lucroValor = 0;
+
             if (divisor > 0) {
                 valorFinalMensal = custoMensal / divisor;
                 impostoValor = valorFinalMensal * taxRate;
@@ -2493,11 +2553,7 @@
             const valorMensalPorVida = vidas > 0 ? valorFinalMensal / vidas : 0;
             resumo.totalAnual.textContent = formatCurrency(valorFinalAnual);
             resumo.mensalPorVida.textContent = formatCurrency(valorMensalPorVida);
-            return {
-                valorFinalMensal,
-                valorFinalAnual,
-                valorMensalPorVida
-            };
+            return { valorFinalMensal, valorFinalAnual, valorMensalPorVida };
         }
 
         function generateProposalPreview(data) {
@@ -2647,39 +2703,33 @@
             };
             const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
             const vidas = parseInt(formElements.numVidas.value) || 0;
+            const selectedSelector = isClientView ? '.service-row.selected' : '.service-card.selected';
 
-            document.querySelectorAll('.service-card.selected').forEach(card => {
-                const {
-                    id,
-                    category
-                } = card.dataset;
+            document.querySelectorAll(selectedSelector).forEach(el => {
+                const { id, category } = el.dataset;
                 const serviceList = priceState[category];
                 if (!serviceList || !Array.isArray(serviceList)) return;
 
                 const service = serviceList.find(s => s.id === id);
                 if (service) {
                     let price;
-                    if(isClientView){
+                    if (isClientView) {
                         price = service.preco ?? getPriceFromState(vidas, service.precos);
                         if (service.isDynamic) {
-                           const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
-                           const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
-                           price = (pgrPrice + pcmsoPrice) * service.multiplier;
+                            const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
+                            const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
+                            price = (pgrPrice + pcmsoPrice) * service.multiplier;
                         }
                     } else {
-                        price = parseCurrency(card.querySelector('.price-input').value);
+                        price = parseCurrency(el.querySelector('.price-input').value);
                     }
 
-                    const quantity = parseInt(card.querySelector('.quantity-input') ?.value || 1);
-                    const frequency = card.querySelector('.frequency-selector') ?.value || 'anual';
-                    services[category].push({ ...service,
-                        category,
-                        price,
-                        quantity,
-                        frequency
-                    });
+                    const quantity = parseInt(el.querySelector('.quantity-input')?.value || 1);
+                    const frequency = el.querySelector('.frequency-selector')?.value || 'anual';
+                    services[category].push({ ...service, category, price, quantity, frequency });
                 }
             });
+
             services.avulsos.push(...Array.from(document.querySelectorAll('#palestras-container .dynamic-row')).map(row => ({
                 id: 'palestra',
                 category: 'avulsos',
@@ -2693,26 +2743,36 @@
                 nome: row.querySelector('.theme-input').value || 'Outro Serviço',
                 price: parseCurrency(row.querySelector('.price-input').value)
             })));
-            return {
-                clientData,
-                services
-            };
+
+            return { clientData, services };
         }
 
         function clearForm(resetDefaults = true) {
-            // Limpa todos os campos, incluindo os readonly
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
             const fieldsToClear = ['proposalId', 'generatorClientId', 'clientName', 'clientCnpj', 'clientAddress', 'clientContactPerson', 'clientContactRole', 'clientEmail', 'clientPhone'];
             fieldsToClear.forEach(id => {
                 const el = document.getElementById(id);
-                if(el) el.value = '';
+                if (el) el.value = '';
             });
 
             formElements.tax.value = 12;
             formElements.profit.value = 30;
             formElements.numVidas.value = 10;
-            document.querySelectorAll('.service-card.selected').forEach(c => c.click());
+
+            if (isClientView) {
+                document.querySelectorAll('.service-checkbox:checked').forEach(checkbox => {
+                    if (!checkbox.disabled) {
+                        checkbox.checked = false;
+                        checkbox.dispatchEvent(new Event('change'));
+                    }
+                });
+            } else {
+                document.querySelectorAll('.service-card.selected').forEach(card => card.click());
+            }
+
             document.querySelectorAll('#palestras-container, #outros-container').forEach(c => c.innerHTML = '');
-            if (resetDefaults) {
+
+            if (resetDefaults && !isClientView) { // Defaults only for vendor view
                 const defaultServices = ['pcmso', 'pgr', 'ltcat', 'custo_adm', 'uso_soc', 'gestao_esocial', 'palestras_anuais', 'visita_tecnica', 'emissao_aso'];
                 defaultServices.forEach(id => {
                     const card = document.querySelector(`.service-card[data-id="${id}"]`);
@@ -2721,6 +2781,7 @@
                     }
                 });
             }
+
             updateSuggestedValues();
             runAllUpdates();
         }
