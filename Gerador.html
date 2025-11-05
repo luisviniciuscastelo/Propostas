@@ -589,7 +589,7 @@
 
             <div id="tab-generator" class="tab-content active">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 space-y-6">
+                    <div id="main-content-col" class="lg:col-span-2 space-y-6">
                         <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
                             <div class="flex justify-between items-center">
                                 <h2 class="text-xl font-semibold text-cyan-800 vendor-only-title">1. Dados do Cliente e Vidas</h2>
@@ -1596,7 +1596,14 @@
                 `Tem certeza que deseja excluir a proposta para ${proposal.clientData.clientName}? Esta ação não pode ser desfeita.`,
                 async () => {
                     try {
-                        await deleteDoc(doc(dbRef.proposals, proposalId));
+                        // Determina a coleção correta (pública ou privada) para exclusão
+                        const isPublicProposal = proposal.status === 'Solicitada pelo Cliente';
+                        const proposalRef = isPublicProposal ?
+                            doc(db, `publicArtifacts/${appId}/proposals`, proposalId) :
+                            doc(dbRef.proposals, proposalId);
+
+                        await deleteDoc(proposalRef);
+
                         addLogEntry('proposal', {
                             action: `Proposta para <strong>${proposal.clientData.clientName}</strong> excluída.`
                         });
@@ -1653,7 +1660,7 @@
                         ${acceptanceInfo}
                     </div>
                     <div class="flex gap-2">
-
+                        ${viewAnswersButton}
                         <button class="details-proposal-btn bg-purple-100 text-purple-800 px-3 py-1 rounded" data-id="${p.id}">Acompanhar</button>
                         <button class="load-proposal-btn bg-blue-100 text-blue-800 px-3 py-1 rounded" data-id="${p.id}">Carregar</button>
                         <button class="delete-proposal-btn bg-red-100 text-red-800 px-3 py-1 rounded" data-id="${p.id}">Excluir</button>
@@ -1912,6 +1919,7 @@
             const addOutroBtn = document.getElementById('add-outro');
             const vendorOnlyTitles = document.querySelectorAll('.vendor-only-title');
             const servicosAvulsosSection = addPalestraBtn.closest('section');
+            const mainContentCol = document.getElementById('main-content-col');
 
             // Detach all auth-dependent listeners on any auth state change
             if (unsubscribeProposals) unsubscribeProposals();
@@ -1945,6 +1953,7 @@
                     mainAppContainer.classList.remove('hidden');
 
                     // Configura a UI para a visão do vendedor
+                    if (mainContentCol) mainContentCol.classList.replace('lg:col-span-3', 'lg:col-span-2');
                     btnLogout.textContent = 'Sair';
                     btnLogout.className = 'w-full md:w-auto bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition-all';
                     vendorOnlyTabs.forEach(tab => tab && (tab.style.display = ''));
@@ -2030,6 +2039,7 @@
                 btnLogout.textContent = 'Login para Vendedores';
                 btnLogout.className = 'w-full md:w-auto bg-cyan-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-cyan-700 transition-all';
 
+                if (mainContentCol) mainContentCol.classList.replace('lg:col-span-2', 'lg:col-span-3');
                 vendorOnlyTabs.forEach(tab => tab && (tab.style.display = 'none'));
                 if (financialParams) financialParams.style.display = 'none';
                 if (summaryBox) summaryBox.style.display = 'none';
@@ -2088,11 +2098,12 @@
 
             if (!configListenerAttached) {
                 onSnapshot(dbRef.config, (docSnap) => {
-                    if (configLoaded) return;
-
-                    configLoaded = true;
-                    clearTimeout(fallbackTimeout);
-                    console.log("Configurações do Firebase recebidas com sucesso.");
+            // A remoção de 'if (configLoaded) return;' permite atualizações em tempo real
+            if (!configLoaded) {
+                configLoaded = true;
+                clearTimeout(fallbackTimeout);
+                console.log("Configurações do Firebase recebidas pela primeira vez.");
+            }
 
                     const data = docSnap.exists() ? docSnap.data().priceState : initialPriceData;
                     priceState = data;
@@ -2102,11 +2113,19 @@
                     renderPriceTable();
                     renderServiceCategories();
 
-                    loginModal.classList.remove('visible');
-                    mainAppContainer.classList.remove('hidden');
-                    loaderElem.style.display = 'none';
-                    console.log("Aplicação iniciada com dados do Firebase.");
-                    exposeForTesting();
+            // Recalcula totais se um vendedor estiver logado, resolvendo a race condition
+            if (auth.currentUser && !auth.currentUser.isAnonymous) {
+                runAllUpdates();
+            }
+
+            // Garante que o loader seja removido apenas uma vez
+            if (loaderElem.style.display !== 'none') {
+                loginModal.classList.remove('visible');
+                mainAppContainer.classList.remove('hidden');
+                loaderElem.style.display = 'none';
+                console.log("Aplicação iniciada com dados do Firebase.");
+                exposeForTesting();
+            }
                 }, (error) => {
                     if (configLoaded) return;
 
@@ -3332,7 +3351,7 @@
             if (e.target.classList.contains('delete-proposal-btn')) {
                 deleteProposal(e.target.dataset.id);
             }
-            if (e.target.classList.contains('view-answers-btn')) {
+             if (e.target.classList.contains('view-answers-btn')) {
                 const proposal = savedProposals.find(p => p.id === e.target.dataset.id);
                 if (proposal && proposal.questionnaireAnswers) {
                     const answers = proposal.questionnaireAnswers;
