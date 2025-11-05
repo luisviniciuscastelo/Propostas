@@ -717,7 +717,7 @@
                                 </div>
                                 <div id="outros-container" class="mt-3 space-y-3"></div>
                             </section>
-                            <div id="client-proposal-actions" class="mt-8">
+                            <div id="client-proposal-actions">
                                 <button id="btn-generate-proposal" form="questionnaire-form" type="submit" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-all shadow-md" style="display: none;">
                                     Pedir Orçamento
                                 </button>
@@ -1653,7 +1653,7 @@
                         ${acceptanceInfo}
                     </div>
                     <div class="flex gap-2">
-                        ${viewAnswersButton}
+
                         <button class="details-proposal-btn bg-purple-100 text-purple-800 px-3 py-1 rounded" data-id="${p.id}">Acompanhar</button>
                         <button class="load-proposal-btn bg-blue-100 text-blue-800 px-3 py-1 rounded" data-id="${p.id}">Carregar</button>
                         <button class="delete-proposal-btn bg-red-100 text-red-800 px-3 py-1 rounded" data-id="${p.id}">Excluir</button>
@@ -1959,6 +1959,10 @@
                     btnSaveProposal.style.display = '';
                     vendorOnlyTitles.forEach(title => title.style.display = 'block');
                     btnGenerateProposal.style.display = 'none';
+
+                    // Mostra a seleção de serviços e esconde o questionário para o vendedor
+                    questionnaireContainer.style.display = 'none';
+                    serviceSelectionContainer.style.display = 'block';
 
                     const clientFields = [formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
                     clientFields.forEach(field => {
