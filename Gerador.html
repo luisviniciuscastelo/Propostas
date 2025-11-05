@@ -1968,6 +1968,7 @@
                     btnSaveProposal.style.display = '';
                     vendorOnlyTitles.forEach(title => title.style.display = 'block');
                     btnGenerateProposal.style.display = 'none';
+                    document.getElementById('btn-new-proposal').style.display = '';
 
                     // Mostra a seleção de serviços e esconde o questionário para o vendedor
                     questionnaireContainer.style.display = 'none';
@@ -2160,7 +2161,7 @@
         // --- CÓDIGO RESTANTE (FUNÇÕES DO APP) --- 
 
         function createServiceTableRow(service, category) {
-            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous; // Should be true here
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
             const isObrigatorio = service.obrigatorio;
 
             if (isClientView && service.oculto) {
@@ -2180,15 +2181,17 @@
                 extraInputs += `<select class="frequency-selector"><option value="anual" selected>Anual</option><option value="mensal">Mensal</option><option value="semanal">Semanal</option></select>`;
             }
 
-            const checkedAttribute = isObrigatorio ? 'checked disabled' : '';
+            const valorCell = isClientView ?
+                `<td class="p-2 align-middle text-sm text-gray-600">${service.descricao || ''}</td>` :
+                `<td class="p-2 align-middle"><input type="text" class="price-input table-price-input" style="width: 110px; text-align: right;"></td>`;
 
             row.innerHTML = `
                 <td class="p-2 text-center align-middle">
-                    <input type="checkbox" class="service-checkbox h-5 w-5 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500" ${checkedAttribute}>
+                    <input type="checkbox" class="service-checkbox h-5 w-5 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500" ${isObrigatorio ? 'checked disabled' : ''}>
                 </td>
                 <td class="p-2 align-middle font-semibold text-gray-800">${service.nome}</td>
                 <td class="p-2 align-middle">${extraInputs}</td>
-                <td class="p-2 align-middle text-sm text-gray-600">${service.descricao || ''}</td>
+                ${valorCell}
             `;
 
             const checkbox = row.querySelector('.service-checkbox');
@@ -2319,92 +2322,49 @@
                 return grouped;
             };
 
-            if (isClientView) {
-                const renderTableForModel = (container, pricingModel) => {
-                    const services = priceState[pricingModel] || [];
-                    const groupedServices = groupServicesByCategory(services);
+            const renderTableForModel = (container, pricingModel) => {
+                const services = priceState[pricingModel] || [];
+                const groupedServices = groupServicesByCategory(services);
+                const lastColumnHeader = isClientView ? 'Descrição' : 'Valor';
 
-                    serviceCategories.forEach(category => {
-                        if (groupedServices[category.id]) {
-                            const servicesForCategory = groupedServices[category.id];
-                            const visibleServicesRows = servicesForCategory
-                                .map(service => createServiceTableRow(service, pricingModel))
-                                .filter(Boolean);
+                serviceCategories.forEach(category => {
+                    if (groupedServices[category.id]) {
+                        const servicesForCategory = groupedServices[category.id];
+                        const visibleServicesRows = servicesForCategory
+                            .map(service => createServiceTableRow(service, pricingModel))
+                            .filter(Boolean);
 
-                            if (visibleServicesRows.length > 0) {
-                                const categoryWrapper = document.createElement('div');
-                                categoryWrapper.className = 'mb-6';
-                                categoryWrapper.innerHTML = `
-                                    <h4 class="font-semibold text-md mb-2 text-cyan-800 border-b pb-1">${category.name}</h4>
-                                    <div class="overflow-x-auto bg-white rounded-lg border">
-                                        <table class="w-full text-sm">
-                                            <thead class="bg-gray-50">
-                                                <tr>
-                                                    <th class="p-2 w-16 text-center font-semibold text-gray-600">Selecionar</th>
-                                                    <th class="p-2 text-left font-semibold text-gray-600">Serviço</th>
-                                                    <th class="p-2 text-left w-48 font-semibold text-gray-600">Quantidade/Frequência</th>
-                                                    <th class="p-2 text-left font-semibold text-gray-600">Descrição</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody></tbody>
-                                        </table>
-                                    </div>
-                                `;
-                                const tbody = categoryWrapper.querySelector('tbody');
-                                visibleServicesRows.forEach(row => tbody.appendChild(row));
-                                container.appendChild(categoryWrapper);
-                            }
+                        if (visibleServicesRows.length > 0) {
+                            const categoryWrapper = document.createElement('div');
+                            categoryWrapper.className = 'mb-6';
+                            categoryWrapper.innerHTML = `
+                                <h4 class="font-semibold text-md mb-2 text-cyan-800 border-b pb-1">${category.name}</h4>
+                                <div class="overflow-x-auto bg-white rounded-lg border">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="p-2 w-16 text-center font-semibold text-gray-600">Selecionar</th>
+                                                <th class="p-2 text-left font-semibold text-gray-600">Serviço</th>
+                                                <th class="p-2 text-left w-48 font-semibold text-gray-600">Quantidade/Frequência</th>
+                                                <th class="p-2 text-left font-semibold text-gray-600">${lastColumnHeader}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            `;
+                            const tbody = categoryWrapper.querySelector('tbody');
+                            visibleServicesRows.forEach(row => tbody.appendChild(row));
+                            container.appendChild(categoryWrapper);
                         }
-                    });
-                };
-                containers.porVida.className = 'space-y-4';
-                containers.anual.className = 'space-y-4';
-                renderTableForModel(containers.porVida, 'porVida');
-                renderTableForModel(containers.anual, 'anual');
-            } else {
-                const renderCardsForModel = (container, pricingModel) => {
-                    const services = priceState[pricingModel] || [];
-                    const groupedServices = groupServicesByCategory(services);
-
-                    serviceCategories.forEach(category => {
-                        if (groupedServices[category.id]) {
-                            const servicesForCategory = groupedServices[category.id];
-                            const serviceCards = servicesForCategory
-                                .map(service => createServiceCard(service, pricingModel))
-                                .filter(Boolean);
-
-                            if (serviceCards.length > 0) {
-                                const categoryWrapper = document.createElement('div');
-                                categoryWrapper.className = 'mb-6';
-                                categoryWrapper.innerHTML = `<h4 class="font-semibold text-md mb-2 text-cyan-800 border-b pb-1">${category.name}</h4>`;
-                                const servicesGrid = document.createElement('div');
-                                servicesGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
-                                serviceCards.forEach(card => servicesGrid.appendChild(card));
-                                categoryWrapper.appendChild(servicesGrid);
-                                container.appendChild(categoryWrapper);
-                            }
-                        }
-                    });
-
-                    if (groupedServices['sem_categoria']) {
-                         const categoryWrapper = document.createElement('div');
-                         categoryWrapper.className = 'mb-6';
-                         categoryWrapper.innerHTML = `<h4 class="font-semibold text-md mb-2 text-gray-500 border-b pb-1">Sem Categoria</h4>`;
-                         const servicesGrid = document.createElement('div');
-                         servicesGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
-                         groupedServices['sem_categoria'].forEach(service => {
-                             servicesGrid.appendChild(createServiceCard(service, pricingModel));
-                         });
-                         categoryWrapper.appendChild(servicesGrid);
-                         container.appendChild(categoryWrapper);
                     }
-                };
+                });
+            };
 
-                containers.porVida.className = 'space-y-4';
-                containers.anual.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
-                renderCardsForModel(containers.porVida, 'porVida');
-                renderCardsForModel(containers.anual, 'anual');
-            }
+            containers.porVida.className = 'space-y-4';
+            containers.anual.className = 'space-y-4';
+            renderTableForModel(containers.porVida, 'porVida');
+            renderTableForModel(containers.anual, 'anual');
         }
 
         function updateSuggestedValues() {
@@ -2412,9 +2372,7 @@
             const vidas = parseInt(formElements.numVidas.value) || 0;
             const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
 
-            const selector = isClientView ? '.service-row' : '.service-card';
-
-            document.querySelectorAll(selector).forEach(el => {
+            document.querySelectorAll('.service-row').forEach(el => {
                 const { id, category } = el.dataset;
                 const services = priceState[category];
                 if (!services || !Array.isArray(services)) return;
@@ -2424,13 +2382,15 @@
 
                 if (!isClientView) {
                     const priceInput = el.querySelector('.price-input');
-                    let pricePerUnit = service.preco ?? getPriceFromState(vidas, service.precos);
-                    if (service.isDynamic) {
-                        const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
-                        const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
-                        pricePerUnit = (pgrPrice + pcmsoPrice) * service.multiplier;
+                    if (priceInput) {
+                        let pricePerUnit = service.preco ?? getPriceFromState(vidas, service.precos);
+                        if (service.isDynamic) {
+                            const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
+                            const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
+                            pricePerUnit = (pgrPrice + pcmsoPrice) * service.multiplier;
+                        }
+                        priceInput.value = pricePerUnit.toFixed(2).replace('.', ',');
                     }
-                    priceInput.value = pricePerUnit.toFixed(2).replace('.', ',');
                 }
 
                 if (service.sugestao_fator) {
@@ -2452,9 +2412,7 @@
             let detailedCosts = [];
             const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
 
-            const selectedServicesSelector = isClientView ? '.service-row.selected' : '.service-card.selected';
-
-            document.querySelectorAll(selectedServicesSelector).forEach(el => {
+            document.querySelectorAll('.service-row.selected').forEach(el => {
                 const { id, category } = el.dataset;
                 const services = priceState[category];
                 if (!services || !Array.isArray(services)) return;
@@ -2471,16 +2429,15 @@
                         price = (pgrPrice + pcmsoPrice) * service.multiplier;
                     }
                 } else {
-                    price = parseCurrency(el.querySelector('.price-input').value);
+                    const priceInput = el.querySelector('.price-input');
+                    price = priceInput ? parseCurrency(priceInput.value) : 0;
                 }
 
-                const totalPriceDisplay = el.querySelector('.total-price-display');
                 let monthlyContribution = 0;
 
                 if (category === 'porVida') {
                     const total = price * vidas;
                     monthlyContribution = total;
-                    if (totalPriceDisplay && !isClientView) totalPriceDisplay.textContent = `= ${formatCurrency(total)}`;
                 } else if (category === 'anual') {
                     const quantity = parseInt(el.querySelector('.quantity-input')?.value || 1);
                     let totalAnual = price * (service.tipo === 'fixo' ? 1 : quantity);
@@ -2490,16 +2447,10 @@
                         else if (frequency === 'semanal') totalAnual = price * quantity * 52;
                     }
                     monthlyContribution = totalAnual / 12;
-                    if (totalPriceDisplay && !isClientView) {
-                        const detailText = service.tipo === 'quantidade' ? `<span class="text-xs">${quantity}x${formatCurrency(price)}</span> = ` : '';
-                        totalPriceDisplay.innerHTML = `${detailText}${formatCurrency(totalAnual)}/ano`;
-                    }
                 }
                 custoMensal += monthlyContribution;
                 detailedCosts.push({ name: service.nome, cost: monthlyContribution, id: service.id });
             });
-
-            document.querySelectorAll('.service-card:not(.selected) .total-price-display').forEach(span => span.textContent = '');
 
             if (isClientView) {
                 ['porVida', 'anual'].forEach(category => {
@@ -2703,9 +2654,8 @@
             };
             const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
             const vidas = parseInt(formElements.numVidas.value) || 0;
-            const selectedSelector = isClientView ? '.service-row.selected' : '.service-card.selected';
 
-            document.querySelectorAll(selectedSelector).forEach(el => {
+            document.querySelectorAll('.service-row.selected').forEach(el => {
                 const { id, category } = el.dataset;
                 const serviceList = priceState[category];
                 if (!serviceList || !Array.isArray(serviceList)) return;
@@ -2759,16 +2709,12 @@
             formElements.profit.value = 30;
             formElements.numVidas.value = 10;
 
-            if (isClientView) {
-                document.querySelectorAll('.service-checkbox:checked').forEach(checkbox => {
-                    if (!checkbox.disabled) {
-                        checkbox.checked = false;
-                        checkbox.dispatchEvent(new Event('change'));
-                    }
-                });
-            } else {
-                document.querySelectorAll('.service-card.selected').forEach(card => card.click());
-            }
+            document.querySelectorAll('.service-checkbox:checked').forEach(checkbox => {
+                if (!checkbox.disabled) {
+                    checkbox.checked = false;
+                    checkbox.dispatchEvent(new Event('change'));
+                }
+            });
 
             document.querySelectorAll('#palestras-container, #outros-container').forEach(c => c.innerHTML = '');
 
