@@ -3215,6 +3215,13 @@
             editServiceTypeSelectDiv.style.display = e.target.value === 'faixa' ? 'none' : 'block';
         });
 
+        function validateClientFields() {
+            const name = clientNameField.value.trim();
+            const email = clientEmailField.value.trim();
+            const phone = clientPhoneField.value.trim();
+            return name !== '' && email !== '' && phone !== '';
+        }
+
         async function handleQuestionnaireSubmit() {
             const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
             if (!isClientView) return;
