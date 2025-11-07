@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://unpkg.com/imask"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -222,6 +224,19 @@
                 display: none;
             }
         }
+        .q-btn {
+            padding: 8px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background-color: #f8fafc;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .q-btn.active {
+            background-color: #0891b2;
+            color: white;
+            border-color: #0891b2;
+        }
     </style>
 </head>
 
@@ -240,8 +255,7 @@
                     <input type="password" id="login-password" class="modal-input mt-1" required autocomplete="current-password">
                 </div>
                 <div id="login-message" class="text-sm text-center h-4"></div>
-                <div class="flex items-center justify-between gap-4 pt-4">
-                    <button type="button" id="btn-register" class="w-full bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Registrar</button>
+                <div class="flex items-center justify-center gap-4 pt-4">
                     <button type="submit" id="btn-login" class="w-full bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Entrar</button>
                 </div>
                 <div class="text-center mt-4">
@@ -255,6 +269,18 @@
 
         <div id="loader" class="loader-overlay">
             <div class="loader"></div>
+        </div>
+
+        <div id="client-history-modal" class="modal-overlay">
+            <div class="modal-content max-w-3xl">
+                <h3 class="text-xl font-bold mb-4 text-center text-cyan-800">Histórico do Cliente</h3>
+                <div id="client-history-details" class="mb-6 p-4 bg-gray-50 rounded-lg text-sm"></div>
+                <h4 class="text-lg font-semibold text-cyan-900 border-b pb-2 mb-2">Propostas Associadas</h4>
+                <div id="client-history-proposals" class="space-y-2 max-h-80 overflow-y-auto"></div>
+                <div class="flex justify-end mt-6">
+                    <button id="modal-history-close-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Fechar</button>
+                </div>
+            </div>
         </div>
 
         <div id="confirmation-modal" class="modal-overlay">
@@ -325,6 +351,7 @@
             </div>
         </div>
 
+
         <div id="add-service-modal" class="modal-overlay">
             <div class="modal-content">
                 <h3 class="text-xl font-bold mb-6 text-center text-cyan-800">Adicionar Novo Serviço</h3>
@@ -334,10 +361,16 @@
                         <input type="text" id="service-name" class="modal-input mt-1" required>
                     </div>
                     <div>
-                        <label for="service-category" class="block text-sm font-medium text-gray-700">Categoria</label>
-                        <select id="service-category" class="modal-select mt-1">
+                        <label for="service-billing-model" class="block text-sm font-medium text-gray-700">Modelo de Cobrança</label>
+                        <select id="service-billing-model" class="modal-select mt-1">
                             <option value="porVida">Serviços por Vida</option>
                             <option value="anual">Serviços Anuais</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="service-category-select" class="block text-sm font-medium text-gray-700">Tipo de Serviço</label>
+                        <select id="service-category-select" class="modal-select mt-1">
+                            <!-- Options will be populated by JS -->
                         </select>
                     </div>
                     <div>
@@ -377,10 +410,16 @@
                         <input type="text" id="edit-service-name" class="modal-input mt-1" required>
                     </div>
                     <div>
-                        <label for="edit-service-category" class="block text-sm font-medium text-gray-700">Categoria</label>
-                        <select id="edit-service-category" class="modal-select mt-1">
+                        <label for="edit-service-billing-model" class="block text-sm font-medium text-gray-700">Modelo de Cobrança</label>
+                        <select id="edit-service-billing-model" class="modal-select mt-1">
                             <option value="porVida">Serviços por Vida</option>
                             <option value="anual">Serviços Anuais</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit-service-category-select" class="block text-sm font-medium text-gray-700">Tipo de Serviço</label>
+                        <select id="edit-service-category-select" class="modal-select mt-1">
+                            <!-- Options will be populated by JS -->
                         </select>
                     </div>
                     <div>
@@ -459,6 +498,70 @@
             </div>
         </div>
 
+        <div id="questionnaire-answers-modal" class="modal-overlay">
+            <div class="modal-content max-w-2xl">
+                <h3 class="text-xl font-bold mb-6 text-center text-cyan-800">Respostas do Questionário</h3>
+                <div id="questionnaire-answers-content" class="space-y-4 text-sm max-h-[60vh] overflow-y-auto pr-4"></div>
+                <div class="flex justify-end mt-6 pt-4 border-t">
+                    <button id="modal-answers-close-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Fechar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="accept-proposal-modal" class="modal-overlay">
+            <div class="modal-content max-w-lg">
+                <h3 class="text-xl font-bold mb-6 text-center text-green-800">Confirmar Aceite da Proposta</h3>
+                <form id="accept-proposal-form" class="space-y-4">
+                    <p class="text-sm text-gray-600">Para confirmar o aceite desta proposta, por favor, preencha os dados abaixo. Esta ação formaliza o seu acordo com os termos e valores apresentados.</p>
+                    <div>
+                        <label for="accept-fullname" class="block text-sm font-medium text-gray-700">Nome Completo do Responsável</label>
+                        <input type="text" id="accept-fullname" class="modal-input mt-1" required>
+                    </div>
+                    <div>
+                        <label for="accept-document" class="block text-sm font-medium text-gray-700">CPF ou CNPJ</label>
+                        <input type="text" id="accept-document" class="modal-input mt-1" required>
+                    </div>
+                    <div class="pt-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="accept-terms" class="h-4 w-4 text-cyan-600 border-gray-300 rounded">
+                            <span class="ml-2 text-gray-700 text-sm">Li e concordo com os termos da proposta.</span>
+                        </label>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="modal-accept-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                        <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 transition-all">Confirmar Aceite</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="thank-you-modal" class="modal-overlay">
+            <div class="modal-content text-center max-w-lg">
+                <h3 class="text-2xl font-bold text-green-700 mb-4">Obrigado!</h3>
+                <p class="text-gray-600 mb-6">Recebemos seu pedido de orçamento com sucesso. Nossa equipe comercial entrará em contato em breve para dar continuidade ao seu atendimento.</p>
+                <div class="flex justify-center">
+                    <button id="modal-thank-you-close-btn" class="bg-green-600 text-white font-semibold py-2 px-8 rounded-lg hover:bg-green-700 transition-all">Fechar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="category-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 id="category-modal-title" class="text-xl font-bold mb-6 text-center text-cyan-800">Adicionar Nova Categoria</h3>
+                <form id="category-form" class="space-y-4">
+                    <input type="hidden" id="categoryId-modal">
+                    <div>
+                        <label for="category-name" class="block text-sm font-medium text-gray-700">Nome da Categoria</label>
+                        <input type="text" id="category-name" class="modal-input mt-1" required>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="modal-category-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                        <button type="submit" class="bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div id="toast-notification" class="toast-notification">
             <span id="toast-message">Operação realizada com sucesso!</span>
         </div>
@@ -481,31 +584,35 @@
                     <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="preview-contract">Prévia do Contrato</button>
                     <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="saved">Propostas Salvas</button>
                     <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="prices">Tabela de Preços</button>
-                    <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="descriptions">Descrição dos Serviços</button>
                 </nav>
             </div>
 
             <div id="tab-generator" class="tab-content active">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 space-y-6">
+                    <div id="main-content-col" class="lg:col-span-2 space-y-6">
                         <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
                             <div class="flex justify-between items-center">
-                                <h2 class="text-xl font-semibold text-cyan-800">1. Dados do Cliente e Vidas</h2>
+                                <h2 class="text-xl font-semibold text-cyan-800 vendor-only-title">1. Dados do Cliente e Vidas</h2>
                                 <button id="btn-new-proposal" class="bg-green-100 text-green-800 font-semibold py-2 px-4 rounded-lg hover:bg-green-200 transition-all">Nova Proposta</button>
                             </div>
-                            <div class="border-t pt-4 mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="border-t pt-4 mt-4 space-y-4">
                                 <input type="hidden" id="proposalId">
                                 <input type="hidden" id="generatorClientId">
-                                <div class="relative md:col-span-2">
-                                    <input type="text" id="clientName" placeholder="Nome da Empresa (Razão Social)" class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none w-full" autocomplete="off">
-                                    <div id="client-search-results" class="absolute z-10 w-full bg-white border border-gray-300 rounded-b-lg mt-1 max-h-48 overflow-y-auto hidden"></div>
+                                <div class="flex flex-col md:flex-row gap-4 items-center">
+                                    <div class="relative flex-grow w-full">
+                                        <input type="text" id="clientName" placeholder="Nome do Cliente" class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none w-full" autocomplete="off">
+                                        <div id="client-search-results" class="absolute z-10 w-full bg-white border border-gray-300 rounded-b-lg mt-1 max-h-48 overflow-y-auto hidden"></div>
+                                    </div>
+                                    <button id="generator-add-client-btn" class="w-full md:w-auto bg-cyan-100 text-cyan-800 font-semibold py-3 px-4 rounded-lg hover:bg-cyan-200 transition-all whitespace-nowrap">+ Cadastrar Cliente</button>
                                 </div>
-                                <input type="text" id="clientCnpj" placeholder="CNPJ" class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none">
-                                <input type="text" id="clientAddress" placeholder="Endereço Completo" class="p-3 border rounded-lg md:col-span-2 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
-                                <input type="text" id="clientContactPerson" placeholder="Pessoa de Contato" class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none">
-                                <input type="text" id="clientContactRole" placeholder="Cargo do Contato" class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none">
-                                <input type="email" id="clientEmail" placeholder="E-mail" class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none">
-                                <input type="tel" id="clientPhone" placeholder="Telefone" class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <input type="text" id="clientCnpj" placeholder="CNPJ" class="p-3 border rounded-lg bg-gray-100" readonly>
+                                    <input type="text" id="clientAddress" placeholder="Endereço Completo" class="p-3 border rounded-lg md:col-span-2 bg-gray-100" readonly>
+                                    <input type="text" id="clientContactPerson" placeholder="Pessoa de Contato" class="p-3 border rounded-lg bg-gray-100" readonly>
+                                    <input type="text" id="clientContactRole" placeholder="Cargo do Contato" class="p-3 border rounded-lg bg-gray-100" readonly>
+                                    <input type="email" id="clientEmail" placeholder="E-mail" class="p-3 border rounded-lg bg-gray-100" readonly>
+                                    <input type="tel" id="clientPhone" placeholder="Telefone" class="p-3 border rounded-lg bg-gray-100" readonly>
+                                </div>
                                 <div class="md:col-span-2">
                                     <label for="numVidas" class="font-medium">Número de Funcionários (Vidas):</label>
                                     <input type="number" id="numVidas" value="10" min="0" class="w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none">
@@ -513,14 +620,89 @@
                             </div>
                         </div>
 
-                        <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-                            <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">2. Seleção de Serviços</h2>
+                        <div id="questionnaire-container" class="bg-white p-6 rounded-xl shadow-md border border-gray-200" style="display: none;">
+                            <h2 class="text-xl font-semibold text-cyan-800">2. Questionário Pré-Proposta</h2>
+                            <p class="text-sm text-gray-600 my-4">Para entendermos melhor suas necessidades, por favor, responda às perguntas abaixo. Isso nos ajudará a criar uma proposta mais alinhada à sua realidade.</p>
+                            <form id="questionnaire-form" class="space-y-6 max-h-[60vh] overflow-y-auto pr-4 border-t pt-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">1) Descreva de uma forma geral as atividades da empresa</label>
+                                    <textarea id="q-activities" rows="3" class="modal-input mt-1"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">2) Possui quantas sedes?</label>
+                                    <input type="number" id="q-locations" class="modal-input mt-1 w-32" min="1" value="1">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">3) Dispõe de algum dos documentos abaixo:</label>
+                                    <div id="q-documents" class="mt-2 space-y-2 text-sm">
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> PCMSO</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> PGR</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> LTCAT</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> ASOs atualizados</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Programa de Conservação Auditiva</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Laudo de Periculosidade</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Laudo de Insalubridade</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Análise Ergonômica</label>
+                                    </div>
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">4) Possui CIPA constituída?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="cipa" class="q-btn">Sim</button><button type="button" data-group="cipa" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-cipa" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">5) Tem atividades envolvidas com máquinas e equipamentos?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="machines" class="q-btn">Sim</button><button type="button" data-group="machines" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-machines" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">6) Há trabalhadores que executam trabalho em altura e/ou espaço confinado?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="confined" class="q-btn">Sim</button><button type="button" data-group="confined" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-confined" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">7) Há trabalhadores expostos a ruído excessivo?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="noise" class="q-btn">Sim</button><button type="button" data-group="noise" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-noise" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">8) Há trabalhadores expostos ao calor?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="heat" class="q-btn">Sim</button><button type="button" data-group="heat" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-heat" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">9) Há trabalhos que envolvam algum manuseio de eletricidade, material explosivo, combustível ou serviços de transporte com uso de motocicleta?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="danger" class="q-btn">Sim</button><button type="button" data-group="danger" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-danger" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">10) Realiza algum trabalho que envolva utilização, manipulação ou transporte de material radioativo?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="radioactive" class="q-btn">Sim</button><button type="button" data-group="radioactive" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-radioactive" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">11) Área construída da empresa é acima de 750 metros quadrados ou tem 02 ou mais pavimentos?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="area" class="q-btn">Sim</button><button type="button" data-group="area" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-area" value="Não">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">12) Outras informações que julgar necessário:</label>
+                                    <textarea id="q-other" rows="3" class="modal-input mt-1"></textarea>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div id="service-selection-container" class="bg-white p-6 rounded-xl shadow-md border border-gray-200" style="display: none;">
+                            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                                <h2 class="text-xl font-semibold text-cyan-800">3. Seleção de Serviços</h2>
+                                <input type="text" id="service-search-input" placeholder="🔎 Buscar serviço..." class="p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                            </div>
                             <section>
-                                <h3 class="font-semibold text-lg mb-3 text-cyan-900">Serviços por Vida (Custo Mensal por Funcionário)</h3>
-                                <div id="servicos-por-vida" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                                <h3 id="servicos-por-vida-title" class="font-semibold text-lg mb-3 text-cyan-900">Serviços por Vida (Custo Mensal por Funcionário)</h3>
+                                <div id="servicos-por-vida" class="space-y-4"></div>
                             </section>
                             <section class="mt-8">
-                                <h3 class="font-semibold text-lg mb-3 text-cyan-900">Serviços Contratuais (Custo Anual Amortizado Mensalmente)</h3>
+                                <h3 id="servicos-anuais-title" class="font-semibold text-lg mb-3 text-cyan-900">Serviços Contratuais (Custo Anual Amortizado Mensalmente)</h3>
                                 <div id="servicos-anuais" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                             </section>
                             <section class="mt-8">
@@ -535,12 +717,17 @@
                                 </div>
                                 <div id="outros-container" class="mt-3 space-y-3"></div>
                             </section>
+                            <div id="client-proposal-actions">
+                                <button id="btn-generate-proposal" form="questionnaire-form" type="submit" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-all shadow-md" style="display: none;">
+                                    Pedir Orçamento
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <div class="lg:col-span-1">
                         <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 sticky top-8 space-y-6">
-                            <div class="financial-card">
+                            <div id="financial-parameters" class="financial-card">
                                 <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Parâmetros Financeiros</h2>
                                 <div class="space-y-3">
                                     <div class="flex justify-between items-center">
@@ -557,7 +744,7 @@
                             <div>
                                 <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Resumo da Proposta</h2>
                                 <div id="resumo-detalhado" class="space-y-1 text-sm border-b pb-2 mb-2"></div>
-                                <div class="space-y-2 text-sm">
+                                <div id="resumo-interno" class="space-y-2 text-sm">
                                     <div class="flex justify-between font-bold"><span class="text-gray-600">Custo Operacional Mensal:</span> <span id="resumo-custo">R$ 0,00</span></div>
                                     <div class="flex justify-between"><span class="text-gray-600">Impostos:</span> <span id="resumo-imposto" class="font-medium">R$ 0,00</span></div>
                                     <div class="flex justify-between"><span class="text-gray-600">Lucro Líquido:</span> <span id="resumo-lucro" class="font-medium">R$ 0,00</span></div>
@@ -579,7 +766,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="mt-6">
+                            <div id="proposal-actions-container" class="mt-6 flex gap-2">
                                 <button id="btn-save-proposal" class="w-full bg-cyan-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-700 transition-all shadow-md">
                                     Salvar Proposta
                                 </button>
@@ -603,12 +790,15 @@
             </div>
 
             <div id="tab-preview-proposal" class="tab-content">
-                <div class="no-print mb-4 flex justify-end">
+                <div class="no-print mb-4 flex justify-end gap-2">
                     <button id="export-word-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-all">
                         Exportar para Word (.doc)
                     </button>
+                    <button id="export-pdf-btn" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-all">
+                        Exportar para PDF
+                    </button>
                 </div>
-                <div id="proposal-preview-content" class="printable-area bg-white p-8 shadow-lg"></div>
+                <div id="proposal-preview-content" contenteditable="true" class="printable-area bg-white p-8 shadow-lg prose max-w-none"></div>
             </div>
             <div id="tab-preview-contract" class="tab-content printable-area bg-white p-8 shadow-lg"></div>
 
@@ -639,6 +829,17 @@
                             <button id="open-adjustment-modal-btn" class="bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-orange-600 transition-all mt-6">Selecionar Serviços e Reajustar</button>
                         </div>
                     </div>
+
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                            <h2 class="text-xl font-semibold text-cyan-800">Gerenciar Categorias de Serviço</h2>
+                            <button id="add-category-btn" class="bg-green-100 text-green-800 font-semibold py-2 px-4 rounded-lg hover:bg-green-200 transition-all">+ Adicionar Categoria</button>
+                        </div>
+                        <div id="category-list-container" class="space-y-2">
+                            <!-- As categorias serão renderizadas aqui -->
+                        </div>
+                    </div>
+
                     <div id="price-table-container" class="space-y-8"></div>
                     <div class="mt-8">
                         <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Log de Alterações de Preços</h2>
@@ -646,46 +847,39 @@
                     </div>
                 </div>
             </div>
-
-            <div id="tab-descriptions" class="tab-content">
-                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-                    <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Descrição Padrão dos Serviços</h2>
-                    <p class="text-sm text-gray-600 mb-6">Edite as descrições que aparecerão nas propostas e contratos. As mudanças serão salvas na nuvem.</p>
-                    <div id="description-table-container" class="space-y-6"></div>
-                </div>
-            </div>
         </div>
     </div> <script type="module">
-        // --- MÓDULOS FIREBASE --- 
-        import {
-            initializeApp
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    // --- MÓDULOS FIREBASE ---
+    import {
+        initializeApp
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 
-        import {
-            getAuth,
-            onAuthStateChanged,
-            createUserWithEmailAndPassword,
-            signInWithEmailAndPassword,
-            signOut,
-            sendPasswordResetEmail
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+        getAuth,
+        onAuthStateChanged,
+        createUserWithEmailAndPassword,
+        signInWithEmailAndPassword,
+        signOut,
+        sendPasswordResetEmail
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        import {
-            getFirestore,
-            doc,
-            getDoc,
-            setDoc,
-            addDoc,
-            updateDoc,
-            deleteDoc,
-            onSnapshot,
-            collection,
-            query,
-            serverTimestamp,
-            writeBatch,
-            arrayUnion
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import {
+        getFirestore,
+        doc,
+        getDoc,
+        setDoc,
+        addDoc,
+        updateDoc,
+        deleteDoc,
+        onSnapshot,
+        collection,
+        query,
+        serverTimestamp,
+        writeBatch,
+        arrayUnion
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+    document.addEventListener('DOMContentLoaded', () => {
         // --- CONFIGURAÇÃO FIREBASE --- 
         const firebaseConfig = {
             apiKey: "AIzaSyDo10f_5Lqy1fhhcW1K6sEpmYRymuAHhFk",
@@ -717,9 +911,17 @@
         let clients = [];
         let priceLogEntries = [];
         let proposalLogEntries = [];
+        let serviceCategories = [];
         let unsubscribeProposals;
+        let unsubscribePublicProposals;
         let unsubscribeClients;
         let unsubscribeLogs;
+
+        let vendorProposals = [];
+        let publicProposals = [];
+
+        let isInitialLoad = true;
+        let configListenerAttached = false;
 
         // --- DADOS INICIAIS (FALLBACK) --- 
         const TIERS = [{
@@ -767,125 +969,154 @@
         }
 
         const initialPriceData = {
+            serviceCategories: [
+                { id: 'programas', name: 'Programas' },
+                { id: 'laudos', name: 'Laudos' },
+                { id: 'treinamentos', name: 'Treinamentos' },
+                { id: 'servicos_administrativos', name: 'Serviços Administrativos' },
+                { id: 'avaliacoes_quantitativas', name: 'Avaliações Quantitativas' },
+                { id: 'medicina', name: 'Medicina' },
+                { id: 'engenharia', name: 'Engenharia' },
+            ],
             // SEU OBJETO DE DADOS INICIAIS (PRESERVADO)
             porVida: [{
                 id: 'custo_adm',
                 nome: 'Custo Administrativo',
                 descricao: 'Gestão administrativa e operacional dos serviços de saúde e segurança do trabalho contratados.',
-                precos: buildTiers(Array(9).fill(10.56))
+                precos: buildTiers(Array(9).fill(10.56)),
+                categoryId: 'servicos_administrativos'
             }, {
                 id: 'gestao_abs',
                 nome: 'Gestão de Absenteísmo',
                 descricao: 'Monitoramento e análise das ausências ao trabalho por motivos de saúde, com o objetivo de identificar causas e propor ações preventivas e corretivas.',
-                precos: buildTiers([15, 14, 13, 12, 11, 10, 10, 10, 10])
+                precos: buildTiers([15, 14, 13, 12, 11, 10, 10, 10, 10]),
+                categoryId: 'medicina'
             }, {
                 id: 'uso_soc',
                 nome: 'Uso do SOC',
                 descricao: 'Disponibilização de acesso ao SOC, sistema integrado para gestão de Saúde e Segurança do Trabalho.',
-                precos: buildTiers(Array(9).fill(0.90))
+                precos: buildTiers(Array(9).fill(0.90)),
+                categoryId: 'servicos_administrativos'
             }],
             anual: [{
                 id: 'pcmso',
                 nome: 'PCMSO',
                 tipo: 'fixo',
                 descricao: 'Elaboração e coordenação do Programa de Controle Médico de Saúde Ocupacional, incluindo a emissão do Relatório Analítico Anual, em conformidade com a NR-7.',
-                precos: buildTiers([250, 350, 450, 550, 650, 750, 900, 1000, 1200])
+                precos: buildTiers([250, 350, 450, 550, 650, 750, 900, 1000, 1200]),
+                categoryId: 'programas'
             }, {
                 id: 'pgr',
                 nome: 'PGR',
                 tipo: 'fixo',
                 descricao: 'Elaboração e acompanhamento do Programa de Gerenciamento de Riscos, conforme a NR-1.',
-                precos: buildTiers([135, 165, 215, 297.50, 350, 430, 485, 515, 537.50])
+                precos: buildTiers([135, 165, 215, 297.50, 350, 430, 485, 515, 537.50]),
+                categoryId: 'programas'
             }, {
                 id: 'ltcat',
                 nome: 'LTCAT',
                 tipo: 'fixo',
                 descricao: 'Elaboração do Laudo Técnico das Condições do Ambiente de Trabalho para fins de aposentadoria especial.',
-                precos: buildTiers([162.50, 215, 270, 322.50, 380, 430, 515, 565, 645])
+                precos: buildTiers([162.50, 215, 270, 322.50, 380, 430, 515, 565, 645]),
+                categoryId: 'laudos'
             }, {
                 id: 'gestao_esocial',
                 nome: 'Gestão de SST para o eSocial',
                 tipo: 'fixo',
                 preco: 0.01,
-                descricao: 'Emissão e envio das informações de SST dos layouts 2210 (Comunicação de Acidente de Trabalho), 2220 (Monitoramento da Saúde do Trabalhador - ASO) e 2240 (Condições Ambientais do Trabalho). Serviços complementares do eSocial solicitar orçamento! Como por exemplo layout 2230 – Afastamento Temporário - Atestados médicos.'
+                descricao: 'Emissão e envio das informações de SST dos layouts 2210 (Comunicação de Acidente de Trabalho), 2220 (Monitoramento da Saúde do Trabalhador - ASO) e 2240 (Condições Ambientais do Trabalho). Serviços complementares do eSocial solicitar orçamento! Como por exemplo layout 2230 – Afastamento Temporário - Atestados médicos.',
+                categoryId: 'servicos_administrativos'
             }, {
                 id: 'palestras_anuais',
                 nome: 'Palestras Anuais (Palestrão)',
                 tipo: 'fixo',
                 preco: 0.01,
-                descricao: 'Palestras ministradas anualmente conforme programação preventiva do PCMSO/PGR, em formato palestrão, em data fornecida pela MedMais.'
+                descricao: 'Palestras ministradas anualmente conforme programação preventiva do PCMSO/PGR, em formato palestrão, em data fornecida pela MedMais.',
+                categoryId: 'treinamentos'
             }, {
                 id: 'visita_tecnica',
                 nome: 'Visita Técnica no Local',
                 tipo: 'fixo',
                 preco: 0.01,
-                descricao: 'Avaliação qualitativa dos riscos laborais realizadas por técnico ou engenheiro de segurança do trabalho. Serviços complementares de Engenheira de Segurança devem solicitar orçamento, como por exemplo medições quantitativas como de ruído e calor.'
+                descricao: 'Avaliação qualitativa dos riscos laborais realizadas por técnico ou engenheiro de segurança do trabalho. Serviços complementares de Engenheira de Segurança devem solicitar orçamento, como por exemplo medições quantitativas como de ruído e calor.',
+                categoryId: 'engenharia'
             }, {
                 id: 'emissao_aso',
                 nome: 'Emissão de ASO',
                 tipo: 'fixo',
                 preco: 0.01,
-                descricao: 'Atestado de Saúde Ocupacional emitidos para funcionários CLT, sendo realizados na sede da MedMais ou na sede da contratante se assim for incluído na proposta.'
+                descricao: 'Atestado de Saúde Ocupacional emitidos para funcionários CLT, sendo realizados na sede da MedMais ou na sede da contratante se assim for incluído na proposta.',
+                categoryId: 'medicina'
             }, {
                 id: 'risco_psicossocial',
                 nome: 'Avaliação de Fatores de Risco Psicossociais',
                 tipo: 'fixo',
                 precos: buildTiers([500.5, 669.50, 864.50, 1101.75, 1300, 1534, 1800.50, 1969.50, 2258.75]),
-                descricao: 'Fase 1: Planejamento Estratégico e Alinhamento<br>• Reunião inicial com a gestão e o RH para definir o escopo, o cronograma e os grupos participantes.<br>• Apresentação da metodologia e validação do plano de comunicação interna.<br>Fase 2: Comunicação e Sensibilização dos Colaboradores<br>• Fornecimento de material e orientação para a comunicação interna sobre a importância, os objetivos e a confidencialidade do processo.<br>Fase 3: Aplicação de Ferramenta Validada<br>• Aplicação de questionário online, sigiloso e confidencial, baseado em metodologia cientificamente validada.<br>Fase 4: Análise de Dados e Relatório Técnico<br>• Análise estatística dos dados e elaboração de um relatório consolidado e 100% anônimo.<br>Fase 5: Apresentação de Resultados e Recomendações<br>• Reunião com a gestão para apresentar os resultados e desenvolver um Plano de Ação.<br>Fase 6: Integração ao PGR e PCMSO<br>• Inclusão formal dos riscos psicossociais no Inventário de Riscos do PGR e atualização do PCMSO.'
+                descricao: 'Fase 1: Planejamento Estratégico e Alinhamento<br>• Reunião inicial com a gestão e o RH para definir o escopo, o cronograma e os grupos participantes.<br>• Apresentação da metodologia e validação do plano de comunicação interna.<br>Fase 2: Comunicação e Sensibilização dos Colaboradores<br>• Fornecimento de material e orientação para a comunicação interna sobre a importância, os objetivos e a confidencialidade do processo.<br>Fase 3: Aplicação de Ferramenta Validada<br>• Aplicação de questionário online, sigiloso e confidencial, baseado em metodologia cientificamente validada.<br>Fase 4: Análise de Dados e Relatório Técnico<br>• Análise estatística dos dados e elaboração de um relatório consolidado e 100% anônimo.<br>Fase 5: Apresentação de Resultados e Recomendações<br>• Reunião com a gestão para apresentar os resultados e desenvolver um Plano de Ação.<br>Fase 6: Integração ao PGR e PCMSO<br>• Inclusão formal dos riscos psicossociais no Inventário de Riscos do PGR e atualização do PCMSO.',
+                categoryId: 'programas'
             }, {
                 id: 'insalubridade',
                 nome: 'Laudo de Insalubridade',
                 tipo: 'fixo',
                 descricao: 'Análise técnica das condições de trabalho para caracterização de atividades ou operações insalubres, conforme a NR-15.',
-                precos: buildTiers([165, 220, 275, 330, 385, 440, 515, 565, 645])
+                precos: buildTiers([165, 220, 275, 330, 385, 440, 515, 565, 645]),
+                categoryId: 'laudos'
             }, {
                 id: 'periculosidade',
                 nome: 'Laudo de Periculosidade',
                 tipo: 'fixo',
                 descricao: 'Análise técnica para caracterização de atividades e operações perigosas que envolvem riscos acentuados, conforme a NR-16.',
-                precos: buildTiers([165, 215, 270, 322.50, 377.50, 430, 515, 565, 645])
+                precos: buildTiers([165, 215, 270, 322.50, 377.50, 430, 515, 565, 645]),
+                categoryId: 'laudos'
             }, {
                 id: 'aep',
                 nome: 'Análise Ergonômica (AEP)',
                 tipo: 'fixo',
                 descricao: 'Realização da Análise Ergonômica Preliminar para identificar e avaliar os riscos ergonômicos, de acordo com a NR-17.',
-                precos: buildTiers([720, 840, 960, 1080, 1200, 1320, 1440, 1560, 1680])
+                precos: buildTiers([720, 840, 960, 1080, 1200, 1320, 1440, 1560, 1680]),
+                categoryId: 'laudos'
             }, {
                 id: 'mapa_risco',
                 nome: 'Mapa de Risco',
                 tipo: 'fixo',
                 descricao: 'Elaboração do Mapa de Riscos, representando graficamente os riscos existentes nos locais de trabalho.',
-                precos: buildTiers([60, 90, 150, 207.50, 267.50, 295, 355, 502.50, 592.50])
+                precos: buildTiers([60, 90, 150, 207.50, 267.50, 295, 355, 502.50, 592.50]),
+                categoryId: 'engenharia'
             }, {
                 id: 'pca',
                 nome: 'PCA',
                 tipo: 'fixo',
                 descricao: 'Desenvolvimento do Programa de Conservação Auditiva para prevenir ou estabilizar as perdas auditivas ocupacionais.',
-                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000])
+                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000]),
+                categoryId: 'programas'
             }, {
                 id: 'ppr',
                 nome: 'PPR',
                 tipo: 'fixo',
                 descricao: 'Implementação do Programa de Proteção Respiratória, estabelecendo procedimentos para a seleção e uso de EPIs.',
-                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000])
+                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000]),
+                categoryId: 'programas'
             }, {
                 id: 'perfuro',
                 nome: 'Plano de Perfuro-Cortante',
                 tipo: 'fixo',
                 descricao: 'Elaboração do Plano de Prevenção de Riscos de Acidentes com Materiais Perfurocortantes, conforme a NR-32.',
-                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000])
+                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000]),
+                categoryId: 'programas'
             }, {
                 id: 'art_pgr',
                 nome: 'ART para PGR',
                 tipo: 'fixo',
                 preco: 105,
-                descricao: 'Emissão da Anotação de Responsabilidade Técnica junto ao CREA para o PGR.'
+                descricao: 'Emissão da Anotação de Responsabilidade Técnica junto ao CREA para o PGR.',
+                categoryId: 'engenharia'
             }, {
                 id: 'art_ltcat',
                 nome: 'ART para LTCAT',
                 tipo: 'fixo',
                 preco: 105,
-                descricao: 'Emissão da Anotação de Responsabilidade Técnica junto ao CREA para o LTCAT.'
+                descricao: 'Emissão da Anotação de Responsabilidade Técnica junto ao CREA para o LTCAT.',
+                categoryId: 'engenharia'
             }, {
                 id: 'atend_in_company',
                 nome: 'Atendimento in Company',
@@ -894,7 +1125,8 @@
                 preco: 400,
                 sugestao_fator: 1.5,
                 sugestao_divisor: 16,
-                descricao: 'Realização de atendimentos médicos ocupacionais nas instalações do cliente.'
+                descricao: 'Realização de atendimentos médicos ocupacionais nas instalações do cliente.',
+                categoryId: 'medicina'
             }, {
                 id: 'ordem_servico',
                 nome: 'Emissão de Ordens de Serviço',
@@ -902,54 +1134,62 @@
                 obs: 'ordens',
                 preco: 50,
                 sugestao_fator: 1.5,
-                descricao: 'Elaboração e fornecimento de Ordens de Serviço de Segurança e Saúde no Trabalho, conforme a NR-1.'
+                descricao: 'Elaboração e fornecimento de Ordens de Serviço de Segurança e Saúde no Trabalho, conforme a NR-1.',
+                categoryId: 'servicos_administrativos'
             }, {
                 id: 'medicao_ruido',
                 nome: 'Medição de Ruído',
                 tipo: 'quantidade',
                 obs: 'pontos',
                 preco: 150,
-                descricao: 'Avaliação quantitativa dos níveis de pressão sonora (dosimetria de ruído).'
+                descricao: 'Avaliação quantitativa dos níveis de pressão sonora (dosimetria de ruído).',
+                categoryId: 'avaliacoes_quantitativas'
             }, {
                 id: 'medicao_calor',
                 nome: 'Medição de Calor',
                 tipo: 'quantidade',
                 obs: 'pontos',
                 preco: 150,
-                descricao: 'Avaliação quantitativa da exposição ao calor (IBUTG).'
+                descricao: 'Avaliação quantitativa da exposição ao calor (IBUTG).',
+                categoryId: 'avaliacoes_quantitativas'
             }, {
                 id: 'cipa',
                 nome: 'Treinamento CIPA',
                 tipo: 'fixo',
                 preco: 600,
-                descricao: 'Capacitação dos membros da Comissão Interna de Prevenção de Acidentes (CIPA), conforme a NR-5.'
+                descricao: 'Capacitação dos membros da Comissão Interna de Prevenção de Acidentes (CIPA), conforme a NR-5.',
+                categoryId: 'treinamentos'
             }, {
                 id: 'brigada',
                 nome: 'Treinamento Brigada',
                 tipo: 'fixo',
                 preco: 800,
-                descricao: 'Treinamento teórico e prático para os membros da Brigada de Incêndio.'
+                descricao: 'Treinamento teórico e prático para os membros da Brigada de Incêndio.',
+                categoryId: 'treinamentos'
             }, {
                 id: 'nr35',
                 nome: 'Treinamento NR 35',
                 tipo: 'quantidade',
                 obs: 'por turma',
                 preco: 850,
-                descricao: 'Capacitação para trabalho em altura, conforme a NR-35.'
+                descricao: 'Capacitação para trabalho em altura, conforme a NR-35.',
+                categoryId: 'treinamentos'
             }, {
                 id: 'nr33',
                 nome: 'Treinamento NR 33',
                 tipo: 'quantidade',
                 obs: 'por turma',
                 preco: 950,
-                descricao: 'Capacitação para trabalhadores e vigias que atuam em espaços confinados, conforme a NR-33.'
+                descricao: 'Capacitação para trabalhadores e vigias que atuam em espaços confinados, conforme a NR-33.',
+                categoryId: 'treinamentos'
             }, {
                 id: 'nr12',
                 nome: 'Treinamento NR 12',
                 tipo: 'quantidade',
                 obs: 'por aluno',
                 precos: buildTiers([100, 60, 70, 80, 90, 100, 110, 120, 130]),
-                descricao: 'Capacitação para a operação segura de máquinas e equipamentos, conforme a NR-12.'
+                descricao: 'Capacitação para a operação segura de máquinas e equipamentos, conforme a NR-12.',
+                categoryId: 'treinamentos'
             }, ],
             palestra: {
                 precos: buildTiers(Array(9).fill(600)),
@@ -987,23 +1227,39 @@
         const savedProposalsContainer = document.getElementById('saved-proposals-container');
         const priceLogContainer = document.getElementById('price-log-container');
         const proposalLogContainer = document.getElementById('proposal-log-container');
-        const descriptionContainer = document.getElementById('description-table-container');
 
         const loginModal = document.getElementById('login-modal');
         const mainAppContainer = document.getElementById('main-app-container');
         const loginForm = document.getElementById('login-form');
         const loginMessage = document.getElementById('login-message');
-        const btnRegister = document.getElementById('btn-register');
         const btnLogout = document.getElementById('btn-logout');
         const forgotPasswordLink = document.getElementById('forgot-password-link');
         const userInfoDisplay = document.getElementById('user-info-display');
 
+
+        // --- Máscaras de Input ---
+        const cnpjMaskOptions = { mask: '00.000.000/0000-00' };
+        const phoneMaskOptions = { mask: '(00) 00000-0000' };
+
+        IMask(document.getElementById('clientCnpj'), cnpjMaskOptions);
+        IMask(document.getElementById('clientPhone'), phoneMaskOptions);
+        IMask(document.getElementById('client-modal-cnpj'), cnpjMaskOptions);
+        IMask(document.getElementById('client-modal-phone'), phoneMaskOptions);
 
         // --- Funções Auxiliares --- 
         const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', {
             style: 'currency',
             currency: 'BRL'
         });
+
+        // --- LÓGICA DE VALIDAÇÃO DO CLIENTE ---
+        const questionnaireContainer = document.getElementById('questionnaire-container');
+        const serviceSelectionContainer = document.getElementById('service-selection-container');
+        const clientNameField = document.getElementById('clientName');
+        const clientEmailField = document.getElementById('clientEmail');
+        const clientPhoneField = document.getElementById('clientPhone');
+
+
         const parseCurrency = (value) => parseFloat(String(value).replace(/[^0-9,-]+/g, "").replace(',', '.')) || 0;
         const getPriceFromState = (vidas, precos) => {
             if (!precos || !Array.isArray(precos)) return 0;
@@ -1046,7 +1302,11 @@
             overlay: document.getElementById('add-service-modal'),
             form: document.getElementById('add-service-form'),
             cancelBtn: document.getElementById('modal-add-cancel-btn'),
-            show: () => addServiceModal.overlay.classList.add('visible'),
+            categorySelect: document.getElementById('service-category-select'),
+            show: () => {
+                addServiceModal.categorySelect.innerHTML = serviceCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                addServiceModal.overlay.classList.add('visible');
+            },
             hide: () => {
                 addServiceModal.overlay.classList.remove('visible');
                 addServiceModal.form.reset();
@@ -1060,7 +1320,8 @@
             serviceIdInput: document.getElementById('edit-service-id'),
             serviceOriginalCategoryInput: document.getElementById('edit-service-original-category'),
             serviceNameInput: document.getElementById('edit-service-name'),
-            serviceCategorySelect: document.getElementById('edit-service-category'),
+            billingModelSelect: document.getElementById('edit-service-billing-model'),
+            categorySelect: document.getElementById('edit-service-category-select'),
             servicePricingTypeSelect: document.getElementById('edit-service-pricing-type'),
             serviceTypeWrapper: document.getElementById('edit-service-type-wrapper'),
             serviceTypeSelect: document.getElementById('edit-service-type'),
@@ -1070,7 +1331,13 @@
                 editServiceModal.serviceOriginalCategoryInput.value = service.category;
                 editServiceModal.serviceNameInput.value = service.nome;
                 editServiceModal.serviceDescriptionInput.value = service.descricao;
-                editServiceModal.serviceCategorySelect.value = service.category;
+                editServiceModal.billingModelSelect.value = service.category;
+
+                editServiceModal.categorySelect.innerHTML = serviceCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                if (service.categoryId) {
+                    editServiceModal.categorySelect.value = service.categoryId;
+                }
+
 
                 if (service.precos) {
                     editServiceModal.servicePricingTypeSelect.value = 'faixa';
@@ -1149,6 +1416,30 @@
             hide: () => {
                 proposalDetailsModal.overlay.classList.remove('visible');
                 proposalDetailsModal.form.reset();
+            }
+        };
+
+        const categoryModal = {
+            overlay: document.getElementById('category-modal'),
+            form: document.getElementById('category-form'),
+            title: document.getElementById('category-modal-title'),
+            idInput: document.getElementById('categoryId-modal'),
+            nameInput: document.getElementById('category-name'),
+            cancelBtn: document.getElementById('modal-category-cancel-btn'),
+            show: (category = null) => {
+                categoryModal.form.reset();
+                if (category) {
+                    categoryModal.title.textContent = "Editar Categoria";
+                    categoryModal.idInput.value = category.id;
+                    categoryModal.nameInput.value = category.name;
+                } else {
+                    categoryModal.title.textContent = "Adicionar Nova Categoria";
+                    categoryModal.idInput.value = '';
+                }
+                categoryModal.overlay.classList.add('visible');
+            },
+            hide: () => {
+                categoryModal.overlay.classList.remove('visible');
             }
         };
 
@@ -1278,7 +1569,10 @@
                             const card = document.querySelector(`.service-card[data-id="${s.id}"]`);
                             if (card) {
                                 if (!card.classList.contains('selected')) card.click();
-                                card.querySelector('.price-input').value = s.price.toFixed(2).replace('.', ',');
+                                const priceInput = card.querySelector('.price-input');
+                                if (priceInput) {
+                                    priceInput.value = s.price.toFixed(2).replace('.', ',');
+                                }
                                 if (card.querySelector('.quantity-input')) card.querySelector('.quantity-input').value = s.quantity;
                                 if (card.querySelector('.frequency-selector')) card.querySelector('.frequency-selector').value = s.frequency;
                             }
@@ -1302,7 +1596,14 @@
                 `Tem certeza que deseja excluir a proposta para ${proposal.clientData.clientName}? Esta ação não pode ser desfeita.`,
                 async () => {
                     try {
-                        await deleteDoc(doc(dbRef.proposals, proposalId));
+                        // Determina a coleção correta (pública ou privada) para exclusão
+                        const isPublicProposal = proposal.status === 'Solicitada pelo Cliente';
+                        const proposalRef = isPublicProposal ?
+                            doc(db, `publicArtifacts/${appId}/proposals`, proposalId) :
+                            doc(dbRef.proposals, proposalId);
+
+                        await deleteDoc(proposalRef);
+
                         addLogEntry('proposal', {
                             action: `Proposta para <strong>${proposal.clientData.clientName}</strong> excluída.`
                         });
@@ -1315,7 +1616,7 @@
             );
         }
 
-        function renderSavedProposals() {
+        function renderSavedProposals(proposalsToRender) {
             if (!savedProposalsContainer) return;
 
             const statusColors = {
@@ -1324,22 +1625,42 @@
                 'Em Negociação': 'bg-yellow-200 text-yellow-800',
                 'Aceita': 'bg-green-200 text-green-800',
                 'Recusada': 'bg-red-200 text-red-800',
+                'Solicitada pelo Cliente': 'bg-purple-200 text-purple-800',
             };
 
-            savedProposalsContainer.innerHTML = savedProposals.sort((a, b) => new Date(b.clientData.lastSaved) - new Date(a.clientData.lastSaved)).map(p => {
+            updateSavedProposalsTab(proposalsToRender);
+            savedProposalsContainer.innerHTML = proposalsToRender.sort((a, b) => new Date(b.clientData.lastSaved) - new Date(a.clientData.lastSaved)).map(p => {
                 const lastSavedDate = p.clientData.lastSaved ? new Date(p.clientData.lastSaved).toLocaleString('pt-BR') : 'N/A';
                 const status = p.status || 'Criada';
                 const statusColor = statusColors[status] || 'bg-gray-200 text-gray-800';
-                return ` 
-                <div class="p-4 bg-gray-50 rounded-lg flex justify-between items-center">
+
+                // Adiciona a propriedade isNew para propostas de clientes que ainda não foram visualizadas
+                if (p.status === 'Solicitada pelo Cliente' && p.viewedByVendor !== true) {
+                    p.isNew = true;
+                }
+
+                const newProposalHighlight = p.isNew ? 'bg-yellow-100 border-yellow-400' : 'bg-gray-50';
+                const newProposalBadge = p.isNew ? '<span class="ml-2 text-xs font-bold text-white bg-red-500 px-2 py-1 rounded-full">NOVA!</span>' : '';
+
+                const acceptanceHighlight = p.status === 'Aceita' && p.acceptanceData ? 'border-2 border-green-500 shadow-lg' : '';
+                const acceptanceInfo = p.status === 'Aceita' && p.acceptanceData ? `<p class="text-xs text-green-700 font-semibold mt-1">Aceita por: ${p.acceptanceData.fullName}</p>` : '';
+
+                const viewAnswersButton = p.status === 'Solicitada pelo Cliente' ?
+                    `<button class="view-answers-btn bg-cyan-100 text-cyan-800 px-3 py-1 rounded" data-id="${p.id}">Ver Respostas</button>` : '';
+
+                return `
+                <div class="p-4 rounded-lg flex justify-between items-center ${newProposalHighlight} ${acceptanceHighlight}">
                     <div>
                         <div class="flex items-center gap-3">
                             <p class="font-bold text-gray-800">${p.clientData.clientName || 'Sem nome'}</p>
                             <span class="text-xs font-semibold px-2 py-1 rounded-full ${statusColor}">${status}</span>
+                            ${newProposalBadge}
                         </div>
                         <p class="text-sm text-gray-600">Salvo em: ${lastSavedDate}</p>
+                        ${acceptanceInfo}
                     </div>
                     <div class="flex gap-2">
+                        ${viewAnswersButton}
                         <button class="details-proposal-btn bg-purple-100 text-purple-800 px-3 py-1 rounded" data-id="${p.id}">Acompanhar</button>
                         <button class="load-proposal-btn bg-blue-100 text-blue-800 px-3 py-1 rounded" data-id="${p.id}">Carregar</button>
                         <button class="delete-proposal-btn bg-red-100 text-red-800 px-3 py-1 rounded" data-id="${p.id}">Excluir</button>
@@ -1389,43 +1710,16 @@
             }
         }
 
-        async function updateDescriptionInDB(category, serviceId, value) {
-            const newPriceState = JSON.parse(JSON.stringify(priceState));
-
-            if (category === 'palestra') {
-                newPriceState.palestra.descricao = value;
-            } else {
-                const services = newPriceState[category];
-                if (!Array.isArray(services)) return;
-                const serviceIndex = services.findIndex(s => s.id === serviceId);
-                if (serviceIndex !== -1) {
-                    newPriceState[category][serviceIndex].descricao = value;
-                } else {
-                    return;
-                }
-            }
-
-            try {
-                await setDoc(dbRef.config, {
-                    priceState: newPriceState
-                }, {
-                    merge: true
-                });
-            } catch (error) {
-                console.error("Erro ao atualizar descrição:", error);
-                toast.show("Falha ao salvar alteração de descrição.");
-            }
-        }
-
         async function updateServiceInDB(serviceData) {
             const {
                 id,
                 originalCategory,
                 newCategory,
                 name,
-                description,
+                descricao,
                 pricingType,
-                serviceType
+                serviceType,
+                categoryId
             } = serviceData;
             const newPriceState = JSON.parse(JSON.stringify(priceState));
 
@@ -1437,7 +1731,8 @@
             const [serviceToUpdate] = newPriceState[originalCategory].splice(serviceIndex, 1);
 
             serviceToUpdate.nome = name;
-            serviceToUpdate.descricao = description;
+            serviceToUpdate.descricao = descricao;
+            serviceToUpdate.categoryId = categoryId;
 
             if (pricingType === 'faixa') {
                 if (!serviceToUpdate.precos) {
@@ -1487,6 +1782,61 @@
             }
         }
 
+        async function saveServiceCategory(categoryData) {
+            const newPriceState = JSON.parse(JSON.stringify(priceState));
+            const { id, name } = categoryData;
+
+            if (!Array.isArray(newPriceState.serviceCategories)) {
+                newPriceState.serviceCategories = [];
+            }
+
+            if (id) { // Edição
+                const index = newPriceState.serviceCategories.findIndex(c => c.id === id);
+                if (index !== -1) {
+                    newPriceState.serviceCategories[index].name = name;
+                }
+            } else { // Adição
+                const newId = name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
+                newPriceState.serviceCategories.push({ id: newId, name: name });
+            }
+
+            try {
+                await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                toast.show('Categoria salva com sucesso!');
+            } catch (error) {
+                console.error("Erro ao salvar categoria:", error);
+                toast.show("Falha ao salvar a categoria.");
+            } finally {
+                categoryModal.hide();
+            }
+        }
+
+        async function deleteServiceCategory(categoryId) {
+            const newPriceState = JSON.parse(JSON.stringify(priceState));
+
+            // Remove a categoria da lista
+            newPriceState.serviceCategories = newPriceState.serviceCategories.filter(c => c.id !== categoryId);
+
+            // Remove o categoryId dos serviços associados
+            ['porVida', 'anual'].forEach(model => {
+                if(newPriceState[model]) {
+                    newPriceState[model].forEach(service => {
+                        if (service.categoryId === categoryId) {
+                            delete service.categoryId;
+                        }
+                    });
+                }
+            });
+
+            try {
+                await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                toast.show('Categoria excluída com sucesso!');
+            } catch (error) {
+                console.error("Erro ao excluir categoria:", error);
+                toast.show("Falha ao excluir a categoria.");
+            }
+        }
+
 
         // LÓGICA DE AUTENTICAÇÃO
         loginForm.addEventListener('submit', (e) => {
@@ -1517,37 +1867,6 @@
                 });
         });
 
-        btnRegister.addEventListener('click', () => {
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            
-            if (email.length < 6 || password.length < 6) {
-                loginMessage.textContent = 'Email e senha devem ter pelo menos 6 caracteres.';
-                loginMessage.classList.remove('text-gray-500');
-                loginMessage.classList.add('text-red-500');
-                return;
-            }
-
-            loginMessage.textContent = 'Registrando...';
-            loginMessage.classList.remove('text-red-500');
-            loginMessage.classList.add('text-gray-500');
-
-            createUserWithEmailAndPassword(auth, email, password)
-                .then((userCredential) => {
-                    console.log('Usuário registrado com sucesso:', userCredential.user);
-                    loginMessage.textContent = 'Usuário registrado! Fazendo login...';
-                })
-                .catch((error) => {
-                    console.error('Erro no registro:', error.code, error.message);
-                    if (error.code === 'auth/email-already-in-use') {
-                        loginMessage.textContent = 'Este email já está em uso.';
-                    } else {
-                        loginMessage.textContent = 'Erro ao registrar. Tente novamente.';
-                    }
-                    loginMessage.classList.remove('text-gray-500');
-                    loginMessage.classList.add('text-red-500');
-                });
-        });
 
         forgotPasswordLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1574,123 +1893,336 @@
         });
 
         btnLogout.addEventListener('click', () => {
-            signOut(auth).catch((error) => {
-                console.error('Erro ao sair:', error);
-            });
+            if (auth.currentUser && !auth.currentUser.isAnonymous) {
+                signOut(auth).catch((error) => console.error('Erro ao sair:', error));
+            } else {
+                loginModal.classList.add('visible');
+            }
         });
 
-
         onAuthStateChanged(auth, async (user) => {
+            const mainTitle = document.querySelector('h1');
+            const mainSubtitle = mainTitle.nextElementSibling;
+            const vendorOnlyTabs = [
+                document.querySelector('.tab-button[data-tab="clients"]'),
+                document.querySelector('.tab-button[data-tab="preview-contract"]'),
+                document.querySelector('.tab-button[data-tab="prices"]'),
+                document.querySelector('.tab-button[data-tab="saved"]'),
+                document.querySelector('.tab-button[data-tab="preview-proposal"]')
+            ];
+            const financialParams = document.getElementById('financial-parameters');
+            const btnSaveProposal = document.getElementById('btn-save-proposal');
+            const btnGenerateProposal = document.getElementById('btn-generate-proposal');
+            const resumoInterno = document.getElementById('resumo-interno');
+            const summaryBox = resumoInterno.parentElement;
+            const addPalestraBtn = document.getElementById('add-palestra');
+            const addOutroBtn = document.getElementById('add-outro');
+            const vendorOnlyTitles = document.querySelectorAll('.vendor-only-title');
+            const servicosAvulsosSection = addPalestraBtn.closest('section');
+            const mainContentCol = document.getElementById('main-content-col');
+
+            // Detach all auth-dependent listeners on any auth state change
+            if (unsubscribeProposals) unsubscribeProposals();
+            if (unsubscribePublicProposals) unsubscribePublicProposals();
+            if (unsubscribeClients) unsubscribeClients();
+            if (unsubscribeLogs) unsubscribeLogs();
+
+            const servicosPorVidaTitle = document.getElementById('servicos-por-vida-title');
+            const servicosAnuaisTitle = document.getElementById('servicos-anuais-title');
+
             if (user && !user.isAnonymous) {
-                userId = user.uid;
-                userEmail = user.email;
-                userInfoDisplay.textContent = `Usuário: ${userEmail}`;
-                loginModal.classList.remove('visible');
-                mainAppContainer.classList.remove('hidden');
-                dbRef.proposals = collection(db, `artifacts/${appId}/users/${userId}/proposals`);
-                dbRef.clients = collection(db, `artifacts/${appId}/users/${userId}/clients`);
-                dbRef.logs = doc(db, `artifacts/${appId}/users/${userId}/userLogs/main`);
-                setupListeners();
+                // --- VENDEDOR LOGADO ---
+                if (servicosPorVidaTitle) servicosPorVidaTitle.style.display = '';
+                if (servicosAnuaisTitle) servicosAnuaisTitle.style.display = '';
+
+                try {
+                    console.log("Usuário autenticado. Configurando a visão do vendedor...");
+                    clearForm(true); // Limpa o formulário para evitar dados de sessão de cliente
+                    userId = user.uid;
+                    userEmail = user.email;
+                    userInfoDisplay.textContent = `Usuário: ${userEmail}`;
+
+                    // ATUALIZA AS REFERÊNCIAS GLOBAIS DO BANCO DE DADOS
+                    dbRef.proposals = collection(db, `artifacts/${appId}/users/${user.uid}/proposals`);
+                    dbRef.clients = collection(db, `artifacts/${appId}/users/${user.uid}/clients`);
+                    dbRef.logs = doc(db, `artifacts/${appId}/users/${user.uid}/userLogs/main`);
+                    console.log("Referências do banco de dados para o usuário atualizadas.");
+
+                    // Mostra a UI principal e esconde o modal de login
+                    loginModal.classList.remove('visible');
+                    mainAppContainer.classList.remove('hidden');
+
+                    // Configura a UI para a visão do vendedor
+                    if (mainContentCol) mainContentCol.classList.replace('lg:col-span-3', 'lg:col-span-2');
+                    btnLogout.textContent = 'Sair';
+                    btnLogout.className = 'w-full md:w-auto bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition-all';
+                    vendorOnlyTabs.forEach(tab => tab && (tab.style.display = ''));
+                    if (financialParams) financialParams.style.display = '';
+                    if (summaryBox) summaryBox.style.display = '';
+                    if (addPalestraBtn) addPalestraBtn.style.display = '';
+                    if (addOutroBtn) addOutroBtn.style.display = '';
+                    if (servicosAvulsosSection) servicosAvulsosSection.style.display = '';
+                    if (mainTitle) mainTitle.textContent = 'Sistema de Gerenciamento de Propostas';
+                    if (mainSubtitle) mainSubtitle.textContent = 'Navegue entre as abas para criar, visualizar e gerenciar suas propostas.';
+                    document.getElementById('generator-add-client-btn').style.display = '';
+                    btnSaveProposal.style.display = '';
+                    vendorOnlyTitles.forEach(title => title.style.display = 'block');
+                    btnGenerateProposal.style.display = 'none';
+                    document.getElementById('btn-new-proposal').style.display = '';
+
+                    // Mostra a seleção de serviços e esconde o questionário para o vendedor
+                    questionnaireContainer.style.display = 'none';
+                    serviceSelectionContainer.style.display = 'block';
+
+                    const clientFields = [formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
+                    clientFields.forEach(field => {
+                        if (field) {
+                            field.readOnly = true;
+                            field.classList.add('bg-gray-100');
+                        }
+                    });
+                    clientNameInput.addEventListener('input', handleClientSearch);
+                    console.log("UI do vendedor configurada.");
+
+                    // Anexa os listeners de dados com tratamento de erros
+                    console.log("Anexando listeners de dados...");
+                    unsubscribeProposals = onSnapshot(query(dbRef.proposals), (snap) => {
+                        vendorProposals = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        savedProposals = [...vendorProposals, ...publicProposals];
+                        renderSavedProposals(savedProposals);
+                    }, (error) => console.error("Erro crítico ao carregar propostas do vendedor:", error));
+
+                    const publicProposalsRef = collection(db, `publicArtifacts/${appId}/proposals`);
+                    unsubscribePublicProposals = onSnapshot(query(publicProposalsRef), (snap) => {
+                        publicProposals = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        savedProposals = [...vendorProposals, ...publicProposals];
+                        renderSavedProposals(savedProposals);
+                    }, (error) => console.error("Erro crítico ao carregar propostas públicas:", error));
+
+                    unsubscribeClients = onSnapshot(query(dbRef.clients), (querySnapshot) => {
+                        clients = [];
+                        querySnapshot.forEach((doc) => clients.push({ id: doc.id, ...doc.data() }));
+                        renderClientsList();
+                    }, (error) => console.error("Erro crítico ao carregar clientes:", error));
+
+                    const priceLogQuery = query(collection(dbRef.logs, 'priceLog'));
+                    const proposalLogQuery = query(collection(dbRef.logs, 'proposalLog'));
+                    onSnapshot(priceLogQuery, (snapshot) => {
+                        priceLogEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        priceLogEntries.sort((a, b) => b.timestamp - a.timestamp);
+                        renderPriceLog();
+                    }, (error) => console.error("Erro ao carregar log de preços:", error));
+                    onSnapshot(proposalLogQuery, (snapshot) => {
+                        proposalLogEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        proposalLogEntries.sort((a, b) => b.timestamp - a.timestamp);
+                        renderProposalLog();
+                    }, (error) => console.error("Erro ao carregar log de propostas:", error));
+
+                    console.log("Listeners de dados anexados. Login completo.");
+
+                } catch (error) {
+                    console.error("Um erro fatal ocorreu durante o processo de login do vendedor:", error);
+                    alert("Ocorreu um erro ao carregar os dados do vendedor. Por favor, recarregue a página e tente novamente.");
+                }
+
             } else {
+                // --- CLIENTE (NÃO LOGADO) ---
+                if (servicosPorVidaTitle) servicosPorVidaTitle.style.display = 'none';
+                if (servicosAnuaisTitle) servicosAnuaisTitle.style.display = 'none';
+
                 userId = null;
                 userEmail = null;
-                mainAppContainer.classList.add('hidden');
-                loginModal.classList.add('visible');
                 userInfoDisplay.textContent = '';
-                loaderElem.style.display = 'none';
-                if (unsubscribeProposals) unsubscribeProposals();
-                if (unsubscribeClients) unsubscribeClients();
-                if (unsubscribeLogs) unsubscribeLogs();
+                mainAppContainer.classList.remove('hidden');
+                loginModal.classList.remove('visible');
+
+
+                btnLogout.textContent = 'Login para Vendedores';
+                btnLogout.className = 'w-full md:w-auto bg-cyan-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-cyan-700 transition-all';
+
+                if (mainContentCol) mainContentCol.classList.replace('lg:col-span-2', 'lg:col-span-3');
+                vendorOnlyTabs.forEach(tab => tab && (tab.style.display = 'none'));
+                if (financialParams) financialParams.style.display = 'none';
+                if (summaryBox) summaryBox.style.display = 'none';
+                if (servicosAvulsosSection) servicosAvulsosSection.style.display = 'none';
+                if (mainTitle) mainTitle.textContent = 'Solicite seu orçamento!';
+                if (mainSubtitle) mainSubtitle.textContent = 'Preencha os dados e selecione os serviços desejados para receber uma proposta personalizada.';
+                document.getElementById('generator-add-client-btn').style.display = 'none';
+                btnSaveProposal.style.display = 'none';
+                vendorOnlyTitles.forEach(title => title.style.display = 'none');
+                btnGenerateProposal.textContent = 'Pedir Orçamento';
+                btnGenerateProposal.className = 'w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-all shadow-md';
+                btnGenerateProposal.style.display = '';
+                questionnaireContainer.style.display = 'block';
+                serviceSelectionContainer.style.display = 'block';
+                document.getElementById('btn-new-proposal').style.display = 'none';
+
+                const clientFields = [formElements.clientName, formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
+                clientFields.forEach(field => {
+                    if (field) {
+                        field.readOnly = false;
+                        field.classList.remove('bg-gray-100');
+                    }
+                });
+                clientNameInput.removeEventListener('input', handleClientSearch);
+
+                const activeTab = document.querySelector('.tab-button.active');
+                if (activeTab && activeTab.style.display === 'none') {
+                    document.querySelector('.tab-button[data-tab="generator"]').click();
+                }
             }
         });
 
         function setupListeners() {
-            let isInitialLoad = true;
-            onSnapshot(dbRef.config, async (docSnap) => {
-                const data = docSnap.exists() ? docSnap.data().priceState : initialPriceData;
+            console.log("Iniciando aplicação e carregando configurações...");
+            let configLoaded = false;
 
-                if (isInitialLoad) {
-                    console.log("Executando carregamento inicial...");
+            // Fallback Timer: If Firebase takes too long, load with default data.
+            const fallbackTimeout = setTimeout(() => {
+                if (configLoaded) return;
+
+                configLoaded = true;
+                console.warn("Timeout de 10s atingido. Conexão com Firebase lenta ou bloqueada. Carregando com dados padrão.");
+
+                priceState = initialPriceData;
+                serviceCategories = initialPriceData.serviceCategories || [];
+
+                popularServicos();
+                renderPriceTable();
+                renderServiceCategories();
+                clearForm(true);
+
+                loaderElem.style.display = 'none';
+                console.log("Aplicação iniciada com dados locais.");
+                exposeForTesting();
+            }, 10000); // 10 seconds timeout
+
+            if (!configListenerAttached) {
+                onSnapshot(dbRef.config, (docSnap) => {
+            // A remoção de 'if (configLoaded) return;' permite atualizações em tempo real
+            if (!configLoaded) {
+                configLoaded = true;
+                clearTimeout(fallbackTimeout);
+                console.log("Configurações do Firebase recebidas pela primeira vez.");
+            }
+
+                    const data = docSnap.exists() ? docSnap.data().priceState : initialPriceData;
                     priceState = data;
+                    serviceCategories = data.serviceCategories || [];
+
                     popularServicos();
                     renderPriceTable();
-                    renderDescriptionTable();
+                    renderServiceCategories();
+
+            // Recalcula totais se um vendedor estiver logado, resolvendo a race condition
+            if (auth.currentUser && !auth.currentUser.isAnonymous) {
+                runAllUpdates();
+            }
+
+            // Garante que o loader seja removido apenas uma vez
+            if (loaderElem.style.display !== 'none') {
+                loginModal.classList.remove('visible');
+                mainAppContainer.classList.remove('hidden');
+                loaderElem.style.display = 'none';
+                console.log("Aplicação iniciada com dados do Firebase.");
+                exposeForTesting();
+            }
+                }, (error) => {
+                    if (configLoaded) return;
+
+                    configLoaded = true;
+                    clearTimeout(fallbackTimeout);
+                    console.error("Erro ao carregar configurações do Firebase:", error);
+                    console.warn("Carregando com dados padrão devido a erro.");
+
+                    priceState = initialPriceData;
+                    serviceCategories = initialPriceData.serviceCategories || [];
+
+                    popularServicos();
+                    renderPriceTable();
+                    renderServiceCategories();
                     clearForm(true);
+
                     loaderElem.style.display = 'none';
-                    isInitialLoad = false;
-                } else {
-                    console.log("Dados de configuração atualizados em segundo plano.");
-                    priceState = data;
-
-                    // ========================================================
-                    // INÍCIO: CORREÇÃO
-                    // ========================================================
-                    // Precisamos reconstruir TODAS as seções que dependem dos preços
-                    popularServicos();
-                    renderPriceTable();
-                    renderDescriptionTable();
-                    // ========================================================
-                    // FIM: CORREÇÃO
-                    // ========================================================
-                }
-            }, (error) => {
-                console.error("Erro ao ouvir configurações:", error);
-                loaderElem.textContent = "Erro ao carregar dados de configuração.";
-            });
-
-            if (unsubscribeProposals) unsubscribeProposals();
-            unsubscribeProposals = onSnapshot(query(dbRef.proposals), (querySnapshot) => {
-                savedProposals = [];
-                querySnapshot.forEach((doc) => {
-                    savedProposals.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
+                    console.log("Aplicação iniciada com dados locais após erro.");
+                    exposeForTesting();
                 });
-                renderSavedProposals();
-            }, (error) => console.error("Erro ao ouvir propostas:", error));
-
-            if (unsubscribeClients) unsubscribeClients();
-            unsubscribeClients = onSnapshot(query(dbRef.clients), (querySnapshot) => {
-                clients = [];
-                querySnapshot.forEach((doc) => {
-                    clients.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
-                renderClientsList();
-            }, (error) => console.error("Erro ao ouvir clientes:", error));
-
-            if (unsubscribeLogs) unsubscribeLogs();
-            if (dbRef.logs) {
-                const priceLogQuery = query(collection(dbRef.logs, 'priceLog'));
-                const proposalLogQuery = query(collection(dbRef.logs, 'proposalLog'));
-
-                onSnapshot(priceLogQuery, (snapshot) => {
-                    priceLogEntries = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                    priceLogEntries.sort((a, b) => b.timestamp - a.timestamp);
-                    renderPriceLog();
-                });
-                onSnapshot(proposalLogQuery, (snapshot) => {
-                    proposalLogEntries = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                    proposalLogEntries.sort((a, b) => b.timestamp - a.timestamp);
-                    renderProposalLog();
-                });
+                configListenerAttached = true;
             }
         }
 
+        // --- INICIALIZAÇÃO DA APLICAÇÃO ---
+        setupListeners();
+
+        // Expõe funções e estado para fins de teste
+        window.priceState = priceState;
+        window.renderSavedProposals = renderSavedProposals;
+
         // --- CÓDIGO RESTANTE (FUNÇÕES DO APP) --- 
 
+        function createServiceTableRow(service, category) {
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            const isObrigatorio = service.obrigatorio;
+
+            if (isClientView && service.oculto) {
+                return null;
+            }
+
+            const row = document.createElement('tr');
+            row.className = 'service-row border-b' + (isObrigatorio ? ' selected' : '');
+            row.dataset.id = service.id;
+            row.dataset.category = category;
+
+            let extraInputs = '';
+            if (service.tipo === 'quantidade') {
+                extraInputs += `<input type="number" value="1" min="1" class="quantity-input" data-label="${service.obs || ''}">`;
+            }
+            if (service.id === 'atend_in_company') {
+                extraInputs += `<select class="frequency-selector"><option value="anual" selected>Anual</option><option value="mensal">Mensal</option><option value="semanal">Semanal</option></select>`;
+            }
+
+            const valorCell = isClientView ?
+                `<td class="p-2 align-middle text-sm text-gray-600">${service.descricao || ''}</td>` :
+                `<td class="p-2 align-middle"><input type="text" class="price-input table-price-input" style="width: 110px; text-align: right;"></td>`;
+
+            row.innerHTML = `
+                <td class="p-2 text-center align-middle">
+                    <input type="checkbox" class="service-checkbox h-5 w-5 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500" ${isObrigatorio ? 'checked' : ''} ${isObrigatorio && isClientView ? 'disabled' : ''}>
+                </td>
+                <td class="p-2 align-middle font-semibold text-gray-800">${service.nome}</td>
+                <td class="p-2 align-middle">${extraInputs}</td>
+                ${valorCell}
+            `;
+
+            const checkbox = row.querySelector('.service-checkbox');
+            const toggleSelection = () => {
+                row.classList.toggle('selected', checkbox.checked);
+                runAllUpdates();
+            };
+
+            checkbox.addEventListener('change', toggleSelection);
+
+            row.querySelectorAll('.quantity-input, .frequency-selector').forEach(input => {
+                input.addEventListener('change', runAllUpdates);
+                input.addEventListener('click', (e) => e.stopPropagation());
+            });
+
+            return row;
+        }
+
         function createServiceCard(service, category) {
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            const isObrigatorio = service.obrigatorio;
+
+            if (isClientView && service.oculto) {
+                return null;
+            }
+
             const card = document.createElement('div');
-            card.className = 'service-card p-4 border-2 border-gray-200 rounded-lg cursor-pointer';
+            card.className = 'service-card p-4 border-2 border-gray-200 rounded-lg flex flex-col justify-between h-full';
+            if (!isObrigatorio) {
+                 card.classList.add('cursor-pointer');
+            }
             card.dataset.id = service.id;
             card.dataset.category = category;
 
@@ -1702,27 +2234,42 @@
                 extraInputs += `<select class="frequency-selector"><option value="anual" selected>Anual</option><option value="mensal">Mensal</option><option value="semanal">Semanal</option></select>`;
             }
 
-            card.innerHTML = ` 
-                <div class="flex justify-between items-start"> 
-                    <div><h4 class="font-bold text-gray-800">${service.nome}</h4><p class="text-sm text-gray-500">${service.obs || ''}</p></div> 
-                    <span class="text-2xl text-gray-300">&#9675;</span> 
-                </div> 
-                <div class="text-right font-semibold text-cyan-700 mt-2 flex items-center justify-end gap-2 flex-wrap"> 
-                    ${extraInputs}<input type="text" class="price-input" readonly> 
-                    <span class="total-price-display text-gray-800 font-bold w-full text-right"></span> 
+            const bottomSectionHTML = `
+                <div class="text-right font-semibold text-cyan-700 mt-2 flex items-center justify-end gap-2 flex-wrap">
+                    ${extraInputs}
+                    <input type="text" class="price-input" readonly>
+                    <span class="total-price-display text-gray-800 font-bold w-full text-right"></span>
                 </div>`;
+
+            card.innerHTML = `
+                <div>
+                    <div class="flex justify-between items-start">
+                        <div><h4 class="font-bold text-gray-800">${service.nome}</h4></div>
+                        <span class="text-2xl text-gray-300">&#9675;</span>
+                    </div>
+                </div>
+                ${bottomSectionHTML}`;
+
             const priceInput = card.querySelector('.price-input');
-            priceInput.addEventListener('change', runAllUpdates);
-            card.addEventListener('click', (e) => {
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+            if(priceInput) {
+                priceInput.addEventListener('change', runAllUpdates);
+            }
+
+            const toggleSelection = () => {
                 card.classList.toggle('selected');
-                priceInput.readOnly = !card.classList.contains('selected');
+                if (priceInput) priceInput.readOnly = !card.classList.contains('selected');
                 const circle = card.querySelector('.text-2xl');
                 circle.innerHTML = card.classList.contains('selected') ? '&#9711;' : '&#9675;';
                 circle.classList.toggle('text-gray-300');
                 circle.classList.toggle('text-cyan-600');
                 runAllUpdates();
+            };
+
+            card.addEventListener('click', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+                toggleSelection();
             });
+
             card.querySelectorAll('.quantity-input, .frequency-selector').forEach(input => {
                 input.addEventListener('change', runAllUpdates);
                 input.addEventListener('click', (e) => e.stopPropagation());
@@ -1751,43 +2298,95 @@
                 porVida: document.getElementById('servicos-por-vida'),
                 anual: document.getElementById('servicos-anuais')
             };
-            Object.keys(containers).forEach(key => containers[key].innerHTML = '');
+            Object.values(containers).forEach(c => c.innerHTML = '');
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
 
-            Object.keys(priceState).filter(k => k !== 'palestra' && containers[k]).forEach(category => {
-                const services = priceState[category];
-                if (Array.isArray(services)) {
-                    services.forEach(s => {
-                        if (s) {
-                            containers[category].appendChild(createServiceCard(s, category));
+            const groupServicesByCategory = (services) => {
+                const grouped = {};
+                services.forEach(service => {
+                    const categoryId = service.categoryId || 'sem_categoria';
+                    if (!grouped[categoryId]) {
+                        grouped[categoryId] = [];
+                    }
+                    grouped[categoryId].push(service);
+                });
+                return grouped;
+            };
+
+            const renderTableForModel = (container, pricingModel) => {
+                const services = priceState[pricingModel] || [];
+                const groupedServices = groupServicesByCategory(services);
+                const lastColumnHeader = isClientView ? 'Descrição' : 'Valor';
+
+                serviceCategories.forEach(category => {
+                    if (groupedServices[category.id]) {
+                        const servicesForCategory = groupedServices[category.id];
+                        const visibleServicesRows = servicesForCategory
+                            .map(service => createServiceTableRow(service, pricingModel))
+                            .filter(Boolean);
+
+                        if (visibleServicesRows.length > 0) {
+                            const categoryWrapper = document.createElement('div');
+                            categoryWrapper.className = 'mb-6';
+                            categoryWrapper.innerHTML = `
+                                <h4 class="font-semibold text-md mb-2 text-cyan-800 border-b pb-1">${category.name}</h4>
+                                <div class="overflow-x-auto bg-white rounded-lg border">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="p-2 w-16 text-center font-semibold text-gray-600">Selecionar</th>
+                                                <th class="p-2 text-left font-semibold text-gray-600">Serviço</th>
+                                                <th class="p-2 text-left w-48 font-semibold text-gray-600">Quantidade/Frequência</th>
+                                                <th class="p-2 text-left font-semibold text-gray-600">${lastColumnHeader}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            `;
+                            const tbody = categoryWrapper.querySelector('tbody');
+                            visibleServicesRows.forEach(row => tbody.appendChild(row));
+                            container.appendChild(categoryWrapper);
                         }
-                    });
-                }
-            });
+                    }
+                });
+            };
+
+            containers.porVida.className = 'space-y-4';
+            containers.anual.className = 'space-y-4';
+            renderTableForModel(containers.porVida, 'porVida');
+            renderTableForModel(containers.anual, 'anual');
+            runAllUpdates();
         }
 
         function updateSuggestedValues() {
             if (!priceState.porVida) return;
             const vidas = parseInt(formElements.numVidas.value) || 0;
-            document.querySelectorAll('.service-card').forEach(card => {
-                const {
-                    id,
-                    category
-                } = card.dataset;
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+
+            document.querySelectorAll('.service-row').forEach(el => {
+                const { id, category } = el.dataset;
                 const services = priceState[category];
                 if (!services || !Array.isArray(services)) return;
 
                 const service = services.find(s => s.id === id);
                 if (!service) return;
-                const priceInput = card.querySelector('.price-input');
-                let pricePerUnit = service.preco ?? getPriceFromState(vidas, service.precos);
-                if (service.isDynamic) {
-                    const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
-                    const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
-                    pricePerUnit = (pgrPrice + pcmsoPrice) * service.multiplier;
+
+                if (!isClientView) {
+                    const priceInput = el.querySelector('.price-input');
+                    if (priceInput) {
+                        let pricePerUnit = service.preco ?? getPriceFromState(vidas, service.precos);
+                        if (service.isDynamic) {
+                            const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
+                            const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
+                            pricePerUnit = (pgrPrice + pcmsoPrice) * service.multiplier;
+                        }
+                        priceInput.value = pricePerUnit.toFixed(2).replace('.', ',');
+                    }
                 }
-                priceInput.value = pricePerUnit.toFixed(2).replace('.', ',');
+
                 if (service.sugestao_fator) {
-                    const qtyInput = card.querySelector('.quantity-input');
+                    const qtyInput = el.querySelector('.quantity-input');
                     if (qtyInput) {
                         let suggestedQty = vidas * service.sugestao_fator;
                         if (service.sugestao_divisor) {
@@ -1803,49 +2402,67 @@
             const vidas = parseInt(formElements.numVidas.value) || 0;
             let custoMensal = 0;
             let detailedCosts = [];
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
 
-            document.querySelectorAll('.service-card.selected').forEach(card => {
-                const {
-                    id,
-                    category
-                } = card.dataset;
+            document.querySelectorAll('.service-row.selected').forEach(el => {
+                const { id, category } = el.dataset;
                 const services = priceState[category];
                 if (!services || !Array.isArray(services)) return;
 
                 const service = services.find(s => s.id === id);
                 if (!service) return;
 
-                const price = parseCurrency(card.querySelector('.price-input').value);
-                const totalPriceDisplay = card.querySelector('.total-price-display');
+                let price;
+                if (isClientView) {
+                    price = service.preco ?? getPriceFromState(vidas, service.precos);
+                     if (service.isDynamic) {
+                        const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
+                        const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
+                        price = (pgrPrice + pcmsoPrice) * service.multiplier;
+                    }
+                } else {
+                    const priceInput = el.querySelector('.price-input');
+                    price = priceInput ? parseCurrency(priceInput.value) : 0;
+                }
+
                 let monthlyContribution = 0;
 
                 if (category === 'porVida') {
                     const total = price * vidas;
                     monthlyContribution = total;
-                    if (totalPriceDisplay) totalPriceDisplay.textContent = `= ${formatCurrency(total)}`;
                 } else if (category === 'anual') {
-                    const quantity = parseInt(card.querySelector('.quantity-input') ?.value || 1);
+                    const quantity = parseInt(el.querySelector('.quantity-input')?.value || 1);
                     let totalAnual = price * (service.tipo === 'fixo' ? 1 : quantity);
                     if (id === 'atend_in_company') {
-                        const frequency = card.querySelector('.frequency-selector').value;
+                        const frequency = el.querySelector('.frequency-selector').value;
                         if (frequency === 'mensal') totalAnual = price * quantity * 12;
                         else if (frequency === 'semanal') totalAnual = price * quantity * 52;
                     }
                     monthlyContribution = totalAnual / 12;
-                    if (totalPriceDisplay) {
-                        const detailText = service.tipo === 'quantidade' ? `<span class="text-xs">${quantity}x${formatCurrency(price)}</span> = ` : '';
-                        totalPriceDisplay.innerHTML = `${detailText}${formatCurrency(totalAnual)}/ano`;
-                    }
                 }
                 custoMensal += monthlyContribution;
-                detailedCosts.push({
-                    name: service.nome,
-                    cost: monthlyContribution,
-                    id: service.id
-                });
+                detailedCosts.push({ name: service.nome, cost: monthlyContribution, id: service.id });
             });
 
-            document.querySelectorAll('.service-card:not(.selected) .total-price-display').forEach(span => span.textContent = '');
+            if (isClientView) {
+                ['porVida', 'anual'].forEach(category => {
+                    const services = priceState[category] || [];
+                    services.forEach(service => {
+                        if (service.obrigatorio && service.oculto) {
+                            let price = service.preco ?? getPriceFromState(vidas, service.precos);
+                            let monthlyContribution = 0;
+                            if (category === 'porVida') {
+                                monthlyContribution = price * vidas;
+                            } else {
+                                monthlyContribution = price / 12;
+                            }
+                            custoMensal += monthlyContribution;
+                            detailedCosts.push({ name: service.nome, cost: monthlyContribution, id: service.id });
+                        }
+                    });
+                });
+            }
+
             document.querySelectorAll('#palestras-container .dynamic-row, #outros-container .dynamic-row').forEach(row => {
                 const avulsoCost = parseCurrency(row.querySelector('.price-input').value);
                 custoMensal += avulsoCost / 12;
@@ -1855,15 +2472,17 @@
                     id: 'outro'
                 });
             });
-
-            resumo.detalhado.innerHTML = detailedCosts.map(item => `<div class="flex justify-between"><span>${item.name}</span><span>${formatCurrency(item.cost)}</span></div>`).join('');
+            if (!isClientView) {
+                resumo.detalhado.innerHTML = detailedCosts.map(item => `<div class="flex justify-between"><span>${item.name}</span><span>${formatCurrency(item.cost)}</span></div>`).join('');
+            } else {
+                resumo.detalhado.innerHTML = '';
+            }
 
             const taxRate = parseCurrency(formElements.tax.value) / 100;
             const profitRate = parseCurrency(formElements.profit.value) / 100;
             const divisor = 1 - (taxRate + profitRate);
-            let valorFinalMensal = 0,
-                impostoValor = 0,
-                lucroValor = 0;
+            let valorFinalMensal = 0, impostoValor = 0, lucroValor = 0;
+
             if (divisor > 0) {
                 valorFinalMensal = custoMensal / divisor;
                 impostoValor = valorFinalMensal * taxRate;
@@ -1877,11 +2496,7 @@
             const valorMensalPorVida = vidas > 0 ? valorFinalMensal / vidas : 0;
             resumo.totalAnual.textContent = formatCurrency(valorFinalAnual);
             resumo.mensalPorVida.textContent = formatCurrency(valorMensalPorVida);
-            return {
-                valorFinalMensal,
-                valorFinalAnual,
-                valorMensalPorVida
-            };
+            return { valorFinalMensal, valorFinalAnual, valorMensalPorVida };
         }
 
         function generateProposalPreview(data) {
@@ -1909,10 +2524,18 @@
                         serviceData = services.find(db_s => db_s.id === s.id);
                     }
                 }
-                return `<tr><td class="p-2 border font-semibold">${s.theme || s.nome}</td><td class="p-2 border">${serviceData?.descricao || ''}</td></tr>`;
+
+                let serviceName = s.theme || s.nome;
+                if (s.tipo === 'quantidade' && s.quantity) {
+                    const unitLabel = s.obs || (s.quantity > 1 ? 'unidades' : 'unidade');
+                    serviceName += ` (${s.quantity} ${unitLabel})`;
+                }
+
+                return `<tr><td class="p-2 border font-semibold">${serviceName}</td><td class="p-2 border">${serviceData?.descricao || ''}</td></tr>`;
             }).join('');
 
             return `<div class="prose max-w-none"> 
+                <div class="text-center mb-8"><img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" alt="Logo Medmais" style="width: 150px; margin: 0 auto;"></div>
                 <h2 class="text-center font-bold text-xl">PROPOSTA COMERCIAL MEDMAIS</h2> 
                 <p><strong>Elaborada em:</strong> ${today}</p> 
                 <p><strong>Para:</strong> ${client.clientContactPerson || 'Não informado'}</p> 
@@ -1973,6 +2596,7 @@
             }).join('');
 
             return `<div class="prose prose-sm max-w-none"> 
+                <div class="text-center mb-8"><img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" alt="Logo Medmais" style="width: 150px; margin: 0 auto;"></div>
                 <h3 class="text-center font-bold">CONTRATO DE PRESTAÇÃO DE SERVIÇO DE SST</h3> 
                 <p><strong>CONTRATANTE:</strong> ${client.clientName}, CNPJ nº ${client.clientCnpj}, com sede em ${client.clientAddress}, representada por ${client.clientContactPerson}.</p> 
                 <p><strong>CONTRATADA:</strong> MEDMAIS SOLUÇÕES MÉDICAS S/S LTDA., CNPJ nº 12.518.597/0001-40.</p> 
@@ -2020,27 +2644,34 @@
                 anual: [],
                 avulsos: []
             };
-            document.querySelectorAll('.service-card.selected').forEach(card => {
-                const {
-                    id,
-                    category
-                } = card.dataset;
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            const vidas = parseInt(formElements.numVidas.value) || 0;
+
+            document.querySelectorAll('.service-row.selected').forEach(el => {
+                const { id, category } = el.dataset;
                 const serviceList = priceState[category];
                 if (!serviceList || !Array.isArray(serviceList)) return;
 
                 const service = serviceList.find(s => s.id === id);
                 if (service) {
-                    const price = parseCurrency(card.querySelector('.price-input').value);
-                    const quantity = parseInt(card.querySelector('.quantity-input') ?.value || 1);
-                    const frequency = card.querySelector('.frequency-selector') ?.value || 'anual';
-                    services[category].push({ ...service,
-                        category,
-                        price,
-                        quantity,
-                        frequency
-                    });
+                    let price;
+                    if (isClientView) {
+                        price = service.preco ?? getPriceFromState(vidas, service.precos);
+                        if (service.isDynamic) {
+                            const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
+                            const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
+                            price = (pgrPrice + pcmsoPrice) * service.multiplier;
+                        }
+                    } else {
+                        price = parseCurrency(el.querySelector('.price-input').value);
+                    }
+
+                    const quantity = parseInt(el.querySelector('.quantity-input')?.value || 1);
+                    const frequency = el.querySelector('.frequency-selector')?.value || 'anual';
+                    services[category].push({ ...service, category, price, quantity, frequency });
                 }
             });
+
             services.avulsos.push(...Array.from(document.querySelectorAll('#palestras-container .dynamic-row')).map(row => ({
                 id: 'palestra',
                 category: 'avulsos',
@@ -2054,28 +2685,47 @@
                 nome: row.querySelector('.theme-input').value || 'Outro Serviço',
                 price: parseCurrency(row.querySelector('.price-input').value)
             })));
-            return {
-                clientData,
-                services
-            };
+
+            return { clientData, services };
         }
 
         function clearForm(resetDefaults = true) {
-            Object.values(formElements).forEach(el => el.value = '');
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            const fieldsToClear = ['proposalId', 'generatorClientId', 'clientName', 'clientCnpj', 'clientAddress', 'clientContactPerson', 'clientContactRole', 'clientEmail', 'clientPhone'];
+            fieldsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+
             formElements.tax.value = 12;
             formElements.profit.value = 30;
             formElements.numVidas.value = 10;
-            document.querySelectorAll('.service-card.selected').forEach(c => c.click());
+            
+            document.querySelectorAll('.service-checkbox:checked').forEach(checkbox => {
+                if (!checkbox.disabled) {
+                    checkbox.checked = false;
+                    checkbox.dispatchEvent(new Event('change'));
+                }
+            });
+
             document.querySelectorAll('#palestras-container, #outros-container').forEach(c => c.innerHTML = '');
-            if (resetDefaults) {
+
+            if (resetDefaults && !isClientView) { // Defaults only for vendor view
                 const defaultServices = ['pcmso', 'pgr', 'ltcat', 'custo_adm', 'uso_soc', 'gestao_esocial', 'palestras_anuais', 'visita_tecnica', 'emissao_aso'];
                 defaultServices.forEach(id => {
-                    const card = document.querySelector(`.service-card[data-id="${id}"]`);
-                    if (card && !card.classList.contains('selected')) {
-                        card.click();
+                    const row = document.querySelector(`.service-row[data-id="${id}"]`);
+                    if (row) {
+                        const checkbox = row.querySelector('.service-checkbox');
+                        if (checkbox && !checkbox.checked) {
+                            checkbox.checked = true;
+                            // Dispara o evento de 'change' para garantir que o estado 'selected' seja aplicado e os totais recalculados.
+                            checkbox.dispatchEvent(new Event('change'));
+                        }
                     }
                 });
             }
+
+
             updateSuggestedValues();
             runAllUpdates();
         }
@@ -2084,11 +2734,11 @@
             if (!priceState.porVida) return;
             const container = document.getElementById('price-table-container');
             container.innerHTML = '';
-            Object.keys(priceState).filter(c => c !== 'palestra').forEach(category => {
+            Object.keys(priceState).filter(c => c !== 'palestra' && c !== 'serviceCategories').forEach(category => {
                 const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1);
                 let tableHtml = `<h3 class="text-lg font-semibold text-cyan-900">${categoryTitle.replace(/([A-Z])/g, ' $1').trim()}</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="bg-gray-100"><th class="p-2 text-left">Serviço</th>`;
                 TIERS.forEach(tier => tableHtml += `<th class="p-2">${tier.label}</th>`);
-                tableHtml += `<th class="p-2 text-center">Ações</th></tr></thead><tbody>`;
+                tableHtml += `<th class="p-2 text-center">Obrigatório</th><th class="p-2 text-center">Oculto</th><th class="p-2 text-center">Ações</th></tr></thead><tbody>`;
 
                 const services = priceState[category];
                 if (Array.isArray(services)) {
@@ -2102,7 +2752,15 @@
                         } else {
                             tableHtml += `<td class="p-1" colspan="${TIERS.length}"><input type="number" step="0.01" class="table-price-input w-32" value="${service.preco}" data-category="${category}" data-service-index="${serviceIndex}"></td>`;
                         }
-                        tableHtml += ` 
+                        const isObrigatorio = service.obrigatorio ? 'checked' : '';
+                        const isOculto = service.oculto ? 'checked' : '';
+                        tableHtml += `
+                                <td class="p-2 text-center">
+                                    <input type="checkbox" class="obrigatorio-checkbox" ${isObrigatorio} data-category="${category}" data-id="${service.id}">
+                                </td>
+                                <td class="p-2 text-center">
+                                    <input type="checkbox" class="oculto-checkbox" ${isOculto} data-category="${category}" data-id="${service.id}">
+                                </td>
                                 <td class="p-2 text-center whitespace-nowrap"> 
                                     <button class="edit-service-btn text-blue-500 hover:text-blue-700 p-1" title="Editar Serviço" data-id="${service.id}" data-category="${category}">✏️</button> 
                                     <button class="delete-service-btn text-red-500 hover:text-red-700 p-1" title="Excluir Serviço" data-id="${service.id}" data-category="${category}">🗑️</button> 
@@ -2132,6 +2790,50 @@
             });
             container.querySelectorAll('.delete-service-btn').forEach(button => {
                 button.addEventListener('click', handleDeleteServiceClick);
+            });
+
+            container.querySelectorAll('.obrigatorio-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', async (e) => {
+                    const { category, id } = e.target.dataset;
+                    const isChecked = e.target.checked;
+
+                    const newPriceState = JSON.parse(JSON.stringify(priceState));
+                    const service = newPriceState[category].find(s => s.id === id);
+
+                    if (service) {
+                        service.obrigatorio = isChecked;
+                        try {
+                            await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                            toast.show('Status de serviço obrigatório atualizado.');
+                        } catch (error) {
+                            console.error("Erro ao atualizar status de serviço obrigatório:", error);
+                            toast.show("Falha ao salvar a alteração.");
+                            e.target.checked = !isChecked; // Reverte a mudança visual em caso de erro
+                        }
+                    }
+                });
+            });
+
+            container.querySelectorAll('.oculto-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', async (e) => {
+                    const { category, id } = e.target.dataset;
+                    const isChecked = e.target.checked;
+
+                    const newPriceState = JSON.parse(JSON.stringify(priceState));
+                    const service = newPriceState[category].find(s => s.id === id);
+
+                    if (service) {
+                        service.oculto = isChecked;
+                        try {
+                            await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                            toast.show('Status de visibilidade do serviço atualizado.');
+                        } catch (error) {
+                            console.error("Erro ao atualizar status de visibilidade:", error);
+                            toast.show("Falha ao salvar a alteração.");
+                            e.target.checked = !isChecked;
+                        }
+                    }
+                });
             });
         }
 
@@ -2163,61 +2865,52 @@
             }
         }
 
-        function renderDescriptionTable() {
-            if (!priceState.porVida) return;
-            descriptionContainer.innerHTML = '';
-            Object.keys(priceState).forEach(category => {
-                const services = Array.isArray(priceState[category]) ? priceState[category] : [priceState[category]];
-                services.forEach((service, serviceIndex) => {
-                    if (!service) return;
-                    if (!service.nome && category === 'palestra') service.nome = 'Palestra Exclusiva';
-                    if (!service.nome) return;
-
-                    const div = document.createElement('div');
-                    div.innerHTML = ` 
-                        <label class="font-semibold text-gray-800">${service.nome}</label> 
-                        <textarea class="description-textarea mt-1" data-category="${category}" data-service-id="${service.id}">${service.descricao || ''}</textarea> 
-                    `;
-                    descriptionContainer.appendChild(div);
-                });
-            });
-            descriptionContainer.querySelectorAll('.description-textarea').forEach(textarea => {
-                textarea.addEventListener('change', (e) => {
-                    const {
-                        category,
-                        serviceId
-                    } = e.target.dataset;
-                    updateDescriptionInDB(category, serviceId, e.target.value);
-                });
-            });
-        }
-
         function exportProposalToWord() {
-            const proposalContent = document.getElementById('proposal-preview-content').innerHTML;
             const clientName = document.getElementById('clientName').value || 'proposta';
             const fileName = `Proposta_${clientName.replace(/\s+/g, '_')}.doc`;
 
-            const fullHtml = ` 
-                <!DOCTYPE html> 
-                <html> 
-                <head> 
-                    <meta charset="UTF-8"> 
-                    <style> 
-                        body { font-family: Arial, sans-serif; font-size: 11pt; } 
-                        table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; } 
-                        th, td { border: 1px solid #cccccc; text-align: left; padding: 8px; } 
-                        th { background-color: #f2f2f2; } 
-                        h2, h3 { color: #2c5282; } 
-                        ul { margin: 0; padding-left: 20px; } 
-                    </style> 
-                </head> 
-                <body> 
-                    ${proposalContent} 
-                </body> 
-                </html> 
+            // 1. Create Cover Page HTML
+            const coverPageHtml = `
+                <div style="width: 100%; height: 297mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                    <img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" style="width: 150px; margin-bottom: 40px;">
+                    <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 20px;">Proposta Comercial</h1>
+                    <p style="font-size: 16px;">${new Date().toLocaleDateString('pt-BR')}</p>
+                </div>
+                <br clear="all" style="page-break-before:always">
             `;
 
-            const converted = htmlDocx.asBlob(fullHtml);
+            // 2. Get Proposal Content
+            const proposalContent = document.getElementById('proposal-preview-content').innerHTML;
+
+            // 3. Combine and wrap in full HTML with styles for Word
+            const fullHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            font-size: 11pt;
+                        }
+                        table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+                        th, td { border: 1px solid #cccccc; text-align: left; padding: 8px; }
+                        th { background-color: #f2f2f2; }
+                        h2, h3 { color: #2c5282; }
+                        ul { margin: 0; padding-left: 20px; }
+                    </style>
+                </head>
+                <body>
+                    ${coverPageHtml}
+                    ${proposalContent}
+                </body>
+                </html>
+            `;
+
+            const converted = htmlDocx.asBlob(fullHtml, {
+                orientation: 'portrait',
+                margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 } // 1 inch = 1440 twips, approx 2.54cm
+            });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(converted);
             link.download = fileName;
@@ -2226,7 +2919,93 @@
             document.body.removeChild(link);
         }
 
+        function exportProposalToPdf() {
+            const clientName = document.getElementById('clientName').value || 'proposta';
+            const fileName = `Proposta_${clientName.replace(/\s+/g, '_')}.pdf`;
+
+            // 1. Create a container for PDF generation
+            const pdfContainer = document.createElement('div');
+
+            // 2. Create the Cover Page
+            const coverPage = document.createElement('div');
+            coverPage.style.width = '210mm';
+            coverPage.style.height = '297mm';
+            coverPage.style.display = 'flex';
+            coverPage.style.flexDirection = 'column';
+            coverPage.style.justifyContent = 'center';
+            coverPage.style.alignItems = 'center';
+            coverPage.style.border = '1px solid #ccc';
+            coverPage.innerHTML = `
+                <img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" style="width: 150px; margin-bottom: 40px;">
+                <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 20px;">Proposta Comercial</h1>
+                <p style="font-size: 16px;">${new Date().toLocaleDateString('pt-BR')}</p>
+            `;
+            pdfContainer.appendChild(coverPage);
+
+            // 3. Clone the proposal content
+            const proposalContent = document.getElementById('proposal-preview-content').cloneNode(true);
+            proposalContent.classList.add('html2pdf__page-break'); // Add page break after cover
+            pdfContainer.appendChild(proposalContent);
+
+            // 4. Set options for html2pdf
+            const opt = {
+                margin: 15, // in mm
+                filename: fileName,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['css'] }
+            };
+
+            html2pdf().from(pdfContainer).set(opt).save();
+        }
+
         // --- CLIENTS FUNCTIONS --- 
+
+        const clientHistoryModal = {
+            overlay: document.getElementById('client-history-modal'),
+            detailsContainer: document.getElementById('client-history-details'),
+            proposalsContainer: document.getElementById('client-history-proposals'),
+            closeBtn: document.getElementById('modal-history-close-btn'),
+            show: () => clientHistoryModal.overlay.classList.add('visible'),
+            hide: () => clientHistoryModal.overlay.classList.remove('visible')
+        };
+        clientHistoryModal.closeBtn.addEventListener('click', clientHistoryModal.hide);
+
+        function showClientHistory(client) {
+            clientHistoryModal.detailsContainer.innerHTML = `
+                <p><strong>Nome:</strong> ${client.name || ''}</p>
+                <p><strong>CNPJ:</strong> ${client.cnpj || ''}</p>
+                <p><strong>Endereço:</strong> ${client.address || ''}</p>
+            `;
+
+            const clientProposals = savedProposals.filter(p => p.clientData.id === client.id);
+
+            if (clientProposals.length > 0) {
+                 clientHistoryModal.proposalsContainer.innerHTML = clientProposals.map(p => {
+                    const totalValue = p.services.porVida.reduce((acc, s) => acc + (s.price * p.clientData.numVidas), 0) +
+                                       p.services.anual.reduce((acc, s) => acc + (s.price * (s.tipo === 'fixo' ? 1 : s.quantity) / 12), 0) +
+                                       p.services.avulsos.reduce((acc, s) => acc + (s.price / 12), 0);
+                     const taxAndProfitDivisor = 1 - ((p.clientData.tax / 100) + (p.clientData.profit / 100));
+                     const finalValue = taxAndProfitDivisor > 0 ? totalValue / taxAndProfitDivisor : 0;
+
+                    return `
+                        <div class="p-3 bg-gray-100 rounded-md text-sm">
+                            <div class="flex justify-between items-center">
+                                <p><strong>Data:</strong> ${new Date(p.clientData.lastSaved).toLocaleDateString('pt-BR')}</p>
+                                <p><strong>Status:</strong> <span class="font-semibold">${p.status || 'Criada'}</span></p>
+                                <p><strong>Valor Mensal:</strong> <span class="font-bold">${formatCurrency(finalValue)}</span></p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                clientHistoryModal.proposalsContainer.innerHTML = '<p class="text-center text-gray-500">Nenhuma proposta encontrada para este cliente.</p>';
+            }
+
+            clientHistoryModal.show();
+        }
+
         function renderClientsList(filter = '') {
             const container = document.getElementById('clients-list-container');
             if (!container) return;
@@ -2244,13 +3023,20 @@
                         <p class="text-sm text-gray-600">${client.cnpj || 'Sem CNPJ'}</p> 
                         <p class="text-xs text-gray-500">${client.contactPerson || ''} ${client.contactRole ? `(${client.contactRole})` : ''}</p> 
                     </div> 
-                    <div> 
-                        <button class="edit-client-btn text-blue-500 hover:text-blue-700 p-1" data-id="${client.id}">✏️ Editar</button> 
-                        <button class="delete-client-btn text-red-500 hover:text-red-700 p-1" data-id="${client.id}">🗑️ Excluir</button> 
+                    <div class="flex gap-2">
+                        <button class="history-client-btn bg-green-100 text-green-800 px-3 py-1 rounded" data-id="${client.id}">Ver Histórico</button>
+                        <button class="edit-client-btn bg-blue-100 text-blue-800 px-3 py-1 rounded" data-id="${client.id}">Editar</button>
+                        <button class="delete-client-btn bg-red-100 text-red-800 px-3 py-1 rounded" data-id="${client.id}">Excluir</button>
                     </div> 
                 </div> 
             `).join('') || '<p class="text-center text-gray-500">Nenhum cliente encontrado.</p>';
 
+            container.querySelectorAll('.history-client-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const client = clients.find(c => c.id === e.currentTarget.dataset.id);
+                    if (client) showClientHistory(client);
+                });
+            });
             container.querySelectorAll('.edit-client-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const client = clients.find(c => c.id === e.currentTarget.dataset.id);
@@ -2298,7 +3084,70 @@
             }
         }
 
+        function renderServiceCategories() {
+            const container = document.getElementById('category-list-container');
+            if (!container) return;
+
+            container.innerHTML = serviceCategories.map(category => `
+                <div class="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                    <p class="font-semibold text-gray-700">${category.name}</p>
+                    <div>
+                        <button class="edit-category-btn text-blue-500 hover:text-blue-700 p-1" data-id="${category.id}">✏️ Editar</button>
+                        <button class="delete-category-btn text-red-500 hover:text-red-700 p-1" data-id="${category.id}">🗑️ Excluir</button>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-center text-gray-500">Nenhuma categoria cadastrada.</p>';
+
+            container.querySelectorAll('.edit-category-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const category = serviceCategories.find(c => c.id === e.currentTarget.dataset.id);
+                    if (category) categoryModal.show(category);
+                });
+            });
+
+            container.querySelectorAll('.delete-category-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const categoryId = e.currentTarget.dataset.id;
+                    const category = serviceCategories.find(c => c.id === categoryId);
+                    if (category) {
+                        modal.show(
+                            'Excluir Categoria',
+                            `Tem certeza que deseja excluir a categoria "${category.name}"? Os serviços associados ficarão sem categoria.`,
+                            () => deleteServiceCategory(categoryId)
+                        );
+                    }
+                });
+            });
+        }
+
+        function updateSavedProposalsTab(proposals) {
+            const savedTab = document.querySelector('.tab-button[data-tab="saved"]');
+            if (!savedTab) return;
+
+            const newProposalsCount = proposals.filter(p => p.status === 'Solicitada pelo Cliente' && p.viewedByVendor !== true).length;
+
+            const existingBadge = savedTab.querySelector('.notification-badge');
+            if (existingBadge) existingBadge.remove();
+
+            if (newProposalsCount > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'notification-badge ml-2 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full';
+                badge.textContent = newProposalsCount;
+                savedTab.appendChild(badge);
+            }
+        }
         // --- Event Listeners --- 
+        document.getElementById('add-category-btn').addEventListener('click', () => categoryModal.show());
+        categoryModal.cancelBtn.addEventListener('click', () => categoryModal.hide());
+        categoryModal.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const categoryData = {
+                id: categoryModal.idInput.value,
+                name: categoryModal.nameInput.value,
+            };
+            saveServiceCategory(categoryData);
+        });
+
         document.getElementById('add-service-btn').addEventListener('click', () => addServiceModal.show());
         addServiceModal.cancelBtn.addEventListener('click', () => addServiceModal.hide());
         addServiceModal.form.addEventListener('submit', async (e) => {
@@ -2307,8 +3156,9 @@
                 id: (document.getElementById('service-name').value.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now()),
                 nome: document.getElementById('service-name').value,
                 descricao: document.getElementById('service-description').value,
+                categoryId: document.getElementById('service-category-select').value,
             };
-            const category = document.getElementById('service-category').value;
+            const category = document.getElementById('service-billing-model').value;
             const pricingType = document.getElementById('service-pricing-type').value;
 
             if (pricingType === 'faixa') {
@@ -2349,9 +3199,10 @@
             const serviceData = {
                 id: editServiceModal.serviceIdInput.value,
                 originalCategory: editServiceModal.serviceOriginalCategoryInput.value,
-                newCategory: editServiceModal.serviceCategorySelect.value,
+                newCategory: editServiceModal.billingModelSelect.value,
                 name: editServiceModal.serviceNameInput.value,
-                description: editServiceModal.serviceDescriptionInput.value,
+                descricao: editServiceModal.serviceDescriptionInput.value,
+                categoryId: editServiceModal.categorySelect.value,
                 pricingType: editServiceModal.servicePricingTypeSelect.value,
                 serviceType: editServiceModal.serviceTypeSelect.value
             };
@@ -2364,7 +3215,102 @@
             editServiceTypeSelectDiv.style.display = e.target.value === 'faixa' ? 'none' : 'block';
         });
 
+        function validateClientFields() {
+            const name = clientNameField.value.trim();
+            const email = clientEmailField.value.trim();
+            const phone = clientPhoneField.value.trim();
+            return name !== '' && email !== '' && phone !== '';
+        }
+
+        async function handleQuestionnaireSubmit() {
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            if (!isClientView) return;
+
+            if (!validateClientFields()) {
+                toast.show('Por favor, preencha corretamente os campos de Nome, E-mail e Telefone para continuar.');
+                return;
+            }
+
+            const proposalData = getFormData();
+
+            const questionnaireAnswers = {
+                activities: document.getElementById('q-activities').value,
+                locations: document.getElementById('q-locations').value,
+                documents: Array.from(document.querySelectorAll('#q-documents input:checked')).map(cb => cb.parentElement.textContent.trim()),
+                cipa: document.getElementById('q-cipa').value,
+                machines: document.getElementById('q-machines').value,
+                confined: document.getElementById('q-confined').value,
+                noise: document.getElementById('q-noise').value,
+                heat: document.getElementById('q-heat').value,
+                danger: document.getElementById('q-danger').value,
+                radioactive: document.getElementById('q-radioactive').value,
+                area: document.getElementById('q-area').value,
+                other: document.getElementById('q-other').value,
+            };
+
+            const clientId = doc(collection(db, 'dummy')).id;
+            const proposalId = doc(collection(db, 'dummy')).id;
+
+            proposalData.clientData.id = clientId;
+            proposalData.clientData.proposalId = proposalId;
+            proposalData.status = "Solicitada pelo Cliente";
+            proposalData.questionnaireAnswers = questionnaireAnswers;
+            proposalData.history = [{
+                status: "Solicitada pelo Cliente",
+                timestamp: new Date().toISOString(),
+                observation: "Proposta solicitada via formulário online."
+            }];
+
+            const clientToSave = {
+                id: clientId,
+                name: proposalData.clientData.clientName,
+                cnpj: proposalData.clientData.clientCnpj,
+                address: proposalData.clientData.clientAddress,
+                contactPerson: proposalData.clientData.clientContactPerson,
+                contactRole: proposalData.clientData.clientContactRole,
+                email: proposalData.clientData.clientEmail,
+                phone: proposalData.clientData.clientPhone
+            };
+
+            const publicProposalRef = doc(db, `publicArtifacts/${appId}/proposals`, proposalId);
+            const publicClientRef = doc(db, `publicArtifacts/${appId}/clients`, clientId);
+
+            try {
+                const batch = writeBatch(db);
+                batch.set(publicClientRef, clientToSave);
+                batch.set(publicProposalRef, proposalData);
+
+                await batch.commit();
+
+                thankYouModal.show();
+
+                const btnGenerate = document.getElementById('btn-generate-proposal');
+                btnGenerate.disabled = true;
+                btnGenerate.textContent = 'Orçamento Solicitado';
+                btnGenerate.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btnGenerate.classList.add('bg-gray-400', 'cursor-not-allowed');
+
+
+            } catch (error) {
+                console.error("Erro ao enviar solicitação: ", error);
+                toast.show('Erro ao processar a solicitação.');
+            }
+        }
+
+
         document.getElementById('btn-save-proposal').addEventListener('click', saveProposal);
+        document.getElementById('questionnaire-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleQuestionnaireSubmit();
+        });
+        document.querySelectorAll('.q-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const group = btn.dataset.group;
+                document.querySelectorAll(`.q-btn[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(`q-${group}`).value = btn.textContent;
+            });
+        });
         document.getElementById('btn-new-proposal').addEventListener('click', () => clearForm(true));
         document.getElementById('add-palestra').addEventListener('click', () => {
             const vidas = parseInt(formElements.numVidas.value) || 0;
@@ -2373,6 +3319,7 @@
         });
         document.getElementById('add-outro').addEventListener('click', () => createDynamicRow('outros-container', 'Descrição do Serviço', runAllUpdates));
         document.getElementById('export-word-btn').addEventListener('click', exportProposalToWord);
+        document.getElementById('export-pdf-btn').addEventListener('click', exportProposalToPdf);
 
         document.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', () => {
@@ -2391,6 +3338,23 @@
             }
         });
 
+        const questionnaireAnswersModal = {
+            overlay: document.getElementById('questionnaire-answers-modal'),
+            content: document.getElementById('questionnaire-answers-content'),
+            closeBtn: document.getElementById('modal-answers-close-btn'),
+            show: () => questionnaireAnswersModal.overlay.classList.add('visible'),
+            hide: () => questionnaireAnswersModal.overlay.classList.remove('visible')
+        };
+        questionnaireAnswersModal.closeBtn.addEventListener('click', questionnaireAnswersModal.hide);
+
+        const thankYouModal = {
+            overlay: document.getElementById('thank-you-modal'),
+            closeBtn: document.getElementById('modal-thank-you-close-btn'),
+            show: () => thankYouModal.overlay.classList.add('visible'),
+            hide: () => thankYouModal.overlay.classList.remove('visible')
+        };
+        thankYouModal.closeBtn.addEventListener('click', thankYouModal.hide);
+
         savedProposalsContainer.addEventListener('click', (e) => {
             if (e.target.classList.contains('load-proposal-btn')) {
                 loadProposal(e.target.dataset.id);
@@ -2399,8 +3363,40 @@
             if (e.target.classList.contains('delete-proposal-btn')) {
                 deleteProposal(e.target.dataset.id);
             }
-            if (e.target.classList.contains('details-proposal-btn')) {
+             if (e.target.classList.contains('view-answers-btn')) {
                 const proposal = savedProposals.find(p => p.id === e.target.dataset.id);
+                if (proposal && proposal.questionnaireAnswers) {
+                    const answers = proposal.questionnaireAnswers;
+                    const contentHtml = `
+                        <div class="p-2 bg-gray-100 rounded"><strong>1) Atividades da empresa:</strong><p class="pl-2">${answers.activities || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>2) Quantas sedes:</strong><p class="pl-2">${answers.locations || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>3) Documentos existentes:</strong><p class="pl-2">${answers.documents.join(', ') || 'Nenhum'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>4) Possui CIPA:</strong><p class="pl-2">${answers.cipa || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>5) Atividades com máquinas:</strong><p class="pl-2">${answers.machines || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>6) Trabalho em altura/espaço confinado:</strong><p class="pl-2">${answers.confined || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>7) Exposição a ruído:</strong><p class="pl-2">${answers.noise || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>8) Exposição ao calor:</strong><p class="pl-2">${answers.heat || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>9) Atividades perigosas (eletricidade, etc.):</strong><p class="pl-2">${answers.danger || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>10) Manuseio de material radioativo:</strong><p class="pl-2">${answers.radioactive || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>11) Área construída (+750m² ou 2+ pavimentos):</strong><p class="pl-2">${answers.area || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>12) Outras informações:</strong><p class="pl-2">${answers.other || 'Nenhuma'}</p></div>
+                    `;
+                    questionnaireAnswersModal.content.innerHTML = contentHtml;
+                    questionnaireAnswersModal.show();
+                } else {
+                    toast.show("Respostas do questionário não encontradas para esta proposta.");
+                }
+            }
+
+            const proposalId = e.target.dataset.id;
+            const proposal = savedProposals.find(p => p.id === proposalId);
+
+            if (proposal && proposal.isNew) {
+                 const proposalRef = doc(db, `publicArtifacts/${appId}/proposals`, proposalId);
+                 updateDoc(proposalRef, { viewedByVendor: true }).catch(err => console.error("Erro ao marcar proposta como visualizada:", err));
+            }
+
+            if (e.target.classList.contains('details-proposal-btn')) {
                 if (proposal) {
                     proposalDetailsModal.proposalIdInput.value = proposal.id;
                     proposalDetailsModal.statusSelect.value = proposal.status || 'Criada';
@@ -2421,6 +3417,7 @@
 
         // Listeners da Aba de Clientes 
         document.getElementById('add-client-btn').addEventListener('click', () => clientModal.show());
+        document.getElementById('generator-add-client-btn').addEventListener('click', () => clientModal.show());
         clientModal.cancelBtn.addEventListener('click', () => clientModal.hide());
         clientModal.form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2447,7 +3444,13 @@
         const clientNameInput = document.getElementById('clientName');
         const clientSearchResults = document.getElementById('client-search-results');
 
-        clientNameInput.addEventListener('input', () => {
+        const handleClientSearch = () => {
+             // Limpa os campos de contato ao digitar um novo nome
+            formElements.clientContactPerson.value = '';
+            formElements.clientContactRole.value = '';
+            formElements.clientEmail.value = '';
+            formElements.clientPhone.value = '';
+
             const searchTerm = clientNameInput.value.toLowerCase();
             if (searchTerm.length < 2) {
                 clientSearchResults.innerHTML = '';
@@ -2465,7 +3468,9 @@
             } else {
                 clientSearchResults.classList.add('hidden');
             }
-        });
+        };
+
+        clientNameInput.addEventListener('input', handleClientSearch);
 
         clientSearchResults.addEventListener('click', (e) => {
             if (e.target.dataset.id) {
@@ -2484,6 +3489,23 @@
                 clientSearchResults.innerHTML = '';
                 clientSearchResults.classList.add('hidden');
             }
+        });
+
+        document.getElementById('service-search-input').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+
+            document.querySelectorAll('.service-card').forEach(card => {
+                const serviceName = card.querySelector('h4').textContent.toLowerCase();
+                const matches = serviceName.includes(searchTerm);
+                card.style.display = matches ? '' : 'none';
+            });
+
+            // Oculta os títulos das categorias se todos os serviços estiverem ocultos
+            document.querySelectorAll('#servicos-por-vida > div, #servicos-anuais > div').forEach(categoryWrapper => {
+                const services = categoryWrapper.querySelectorAll('.service-card');
+                const allHidden = Array.from(services).every(s => s.style.display === 'none');
+                categoryWrapper.style.display = allHidden ? 'none' : '';
+            });
         });
 
         document.body.addEventListener('click', (e) => {
@@ -2610,6 +3632,7 @@
                 toast.show("Falha ao atualizar o status.");
             }
         });
+    });
     </script>
 </body>
 
